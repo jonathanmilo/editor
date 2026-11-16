@@ -1,8 +1,8 @@
 {
-  "name": "editor-genial",
-  "productName": "Editor genial",
+  "name": "editor-de-joni",
+  "productName": "Editor de Joni",
   "version": "1.2.0",
-  "description": "Editor genial: editor de texto de escritorio con modo máquina de escribir",
+  "description": "Editor de Joni :): editor de texto de escritorio con modo máquina de escribir",
   "main": "main.js",
   "scripts": {
     "build": "esbuild src/editor/editor.js --bundle --format=iife --minify --target=chrome120 --outfile=src/vendor/editor.js",
@@ -37,8 +37,8 @@
     "esbuild": "^0.28.2"
   },
   "build": {
-    "appId": "app.editorgenial",
-    "productName": "Editor genial",
+    "appId": "app.editordejoni",
+    "productName": "Editor de Joni",
     "files": [
       "main.js",
       "preload.js",
@@ -65,7 +65,7 @@
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "shortcutName": "Editor genial"
+      "shortcutName": "Editor de Joni"
     },
     "fileAssociations": [
       {

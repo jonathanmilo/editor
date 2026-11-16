@@ -1,8 +1,8 @@
-# Editor genial
+# Editor de Joni :)
 
-<img src="build/icon.png" width="96" alt="Ícono de Editor genial">
+<img src="build/icon.png" width="96" alt="Ícono de Editor de Joni">
 
-**Editor genial** es un editor de texto de escritorio (Windows, macOS y Linux) hecho con Electron, con un **modo máquina de escribir**:
+**Editor de Joni :)** es un editor de texto de escritorio (Windows, macOS y Linux) hecho con Electron, con un **modo máquina de escribir**:
 
 - La línea en la que escribes queda siempre fija sobre un **riel**; el texto sube al pulsar Enter.
 - Un **carro** con un tipo en forma de "T" se desliza por el riel siguiendo al cursor.
@@ -126,6 +126,9 @@ El instalador `.exe` queda en la carpeta `dist/` y asocia la app a los archivos 
 El ícono está en `build/` (`icon.svg` es el original; `icon.png` e `icon.ico` se generan a partir de él)
 y `assets/icon.png` es el de la ventana.
 
+En pantalla la app se llama «Editor de Joni :)»; en los nombres de archivo (ejecutable, acceso directo,
+carpeta de datos) se usa «Editor de Joni», porque Windows no admite los dos puntos en esos nombres.
+
 ## Seguridad
 
 - Electron 45 (sin las vulnerabilidades que `npm audit` reportaba en Electron 38 y `extract-zip`).
@@ -153,5 +156,5 @@ src/               interfaz (HTML, CSS, lógica de la máquina de escribir y son
 ```
 
 La biblioteca guarda cada documento como JSON en la carpeta de datos de la aplicación
-(en Windows: `%APPDATA%\Editor genial\documentos`), con autoguardado continuo. Si tenías documentos de cuando
-la app se llamaba «Máquina de escribir», se copian solos la primera vez que se abre.
+(en Windows: `%APPDATA%\Editor de Joni\documentos`), con autoguardado continuo. Si tenías documentos de cuando
+la app se llamaba «Editor genial» o «Máquina de escribir», se copian solos la primera vez que se abre.

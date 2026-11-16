@@ -20,7 +20,7 @@ function createWindow() {
     minWidth: 720,
     minHeight: 520,
     backgroundColor: '#8c827d',
-    title: 'Editor genial',
+    title: 'Editor de Joni :)',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     titleBarStyle: 'hidden',
     titleBarOverlay: isMac ? undefined : { ...TITLEBAR.light, height: 36 },
@@ -309,10 +309,10 @@ app.on('second-instance', (_e, argv) => {
 });
 app.on('open-file', (e, p) => { e.preventDefault(); if (win) openPath(p); else pendingPath = p; });
 
-// La app antes se llamaba «Máquina de escribir»: la primera vez se copian su biblioteca y sus ajustes.
+// La app antes se llamó «Editor genial» y «Máquina de escribir»: la primera vez se copian su biblioteca y sus ajustes.
 async function migrateOldData() {
   const target = app.getPath('userData');
-  for (const oldName of ['Máquina de escribir', 'maquina-de-escribir']) {
+  for (const oldName of ['Editor genial', 'Máquina de escribir', 'maquina-de-escribir']) {
     const old = path.join(app.getPath('appData'), oldName);
     if (old === target) continue;
     for (const sub of ['documentos', 'Local Storage']) {
