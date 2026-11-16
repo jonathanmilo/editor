@@ -1,8 +1,8 @@
 {
-  "name": "maquina-de-escribir",
-  "productName": "Máquina de escribir",
+  "name": "editor-genial",
+  "productName": "Editor genial",
   "version": "1.2.0",
-  "description": "Editor de texto de escritorio con modo máquina de escribir",
+  "description": "Editor genial: editor de texto de escritorio con modo máquina de escribir",
   "main": "main.js",
   "scripts": {
     "build": "esbuild src/editor/editor.js --bundle --format=iife --minify --target=chrome120 --outfile=src/vendor/editor.js",
@@ -37,27 +37,35 @@
     "esbuild": "^0.28.2"
   },
   "build": {
-    "appId": "app.maquinadeescribir",
-    "productName": "Máquina de escribir",
+    "appId": "app.editorgenial",
+    "productName": "Editor genial",
     "files": [
       "main.js",
       "preload.js",
       "lib/**/*",
       "src/**/*",
-      "!src/editor/**"
+      "!src/editor/**",
+      "assets/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "build/icon.png"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "build/icon.png",
+      "category": "Office"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "shortcutName": "Editor genial"
     },
     "fileAssociations": [
       {
@@ -83,6 +91,10 @@
     ],
     "asarUnpack": [
       "node_modules/pdfjs-dist/**"
-    ]
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    }
   }
 }

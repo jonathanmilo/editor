@@ -1,6 +1,8 @@
-# Máquina de escribir
+# Editor genial
 
-Editor de texto de escritorio (Windows, macOS y Linux) hecho con Electron, con un **modo máquina de escribir**:
+<img src="build/icon.png" width="96" alt="Ícono de Editor genial">
+
+**Editor genial** es un editor de texto de escritorio (Windows, macOS y Linux) hecho con Electron, con un **modo máquina de escribir**:
 
 - La línea en la que escribes queda siempre fija sobre un **riel**; el texto sube al pulsar Enter.
 - Un **carro** con un tipo en forma de "T" se desliza por el riel siguiendo al cursor.
@@ -121,9 +123,14 @@ npm run dist:win
 
 El instalador `.exe` queda en la carpeta `dist/` y asocia la app a los archivos `.docx`, `.pdf`, `.txt` y `.md`.
 
+El ícono está en `build/` (`icon.svg` es el original; `icon.png` e `icon.ico` se generan a partir de él)
+y `assets/icon.png` es el de la ventana.
+
 ## Estructura
 
 ```
+assets/            ícono de la ventana
+build/             ícono del instalador y de la app (.svg, .png, .ico)
 main.js            proceso principal: ventana, menús, diálogos, almacenamiento
 preload.js         puente seguro con la interfaz
 lib/formats.js     coordina la lectura y escritura de cada formato
@@ -136,4 +143,5 @@ src/               interfaz (HTML, CSS, lógica de la máquina de escribir y son
 ```
 
 La biblioteca guarda cada documento como JSON en la carpeta de datos de la aplicación
-(en Windows: `%APPDATA%\maquina-de-escribir\documentos`), con autoguardado continuo.
+(en Windows: `%APPDATA%\Editor genial\documentos`), con autoguardado continuo. Si tenías documentos de cuando
+la app se llamaba «Máquina de escribir», se copian solos la primera vez que se abre.

@@ -20,7 +20,8 @@ function createWindow() {
     minWidth: 720,
     minHeight: 520,
     backgroundColor: '#8c827d',
-    title: 'Máquina de escribir',
+    title: 'Editor genial',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     titleBarStyle: 'hidden',
     titleBarOverlay: isMac ? undefined : { ...TITLEBAR.light, height: 36 },
     trafficLightPosition: { x: 14, y: 12 },
@@ -288,7 +289,25 @@ app.on('second-instance', (_e, argv) => {
 });
 app.on('open-file', (e, p) => { e.preventDefault(); if (win) openPath(p); else pendingPath = p; });
 
-app.whenReady().then(() => {
+// La app antes se llamaba «Máquina de escribir»: la primera vez se copian su biblioteca y sus ajustes.
+async function migrateOldData() {
+  const target = app.getPath('userData');
+  for (const oldName of ['Máquina de escribir', 'maquina-de-escribir']) {
+    const old = path.join(app.getPath('appData'), oldName);
+    if (old === target) continue;
+    for (const sub of ['documentos', 'Local Storage']) {
+      const from = path.join(old, sub), to = path.join(target, sub);
+      try {
+        await fs.access(from);
+        try { await fs.access(to); continue; } catch { /* no existe: se copia */ }
+        await fs.cp(from, to, { recursive: true });
+      } catch { /* no hay datos anteriores */ }
+    }
+  }
+}
+
+app.whenReady().then(async () => {
+  await migrateOldData();
   buildMenu();
   createWindow();
   openPath(pendingPath);
