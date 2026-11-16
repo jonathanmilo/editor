@@ -29,6 +29,9 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      devTools: !app.isPackaged,
       spellcheck: true,
     },
   });
@@ -36,11 +39,19 @@ function createWindow() {
   win.webContents.session.setSpellCheckerLanguages(['es-ES', 'es']);
   win.loadFile(path.join(__dirname, 'src', 'index.html'));
 
-  // Abrir enlaces externos en el navegador
+  // Nunca se abren ventanas nuevas: los enlaces web van al navegador y el resto se ignora
   win.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    openWebLink(url);
     return { action: 'deny' };
   });
+  // La ventana nunca sale de la app (p. ej. al soltar un enlace o un archivo HTML encima)
+  win.webContents.on('will-navigate', (e, url) => {
+    if (url !== win.webContents.getURL()) { e.preventDefault(); openWebLink(url); }
+  });
+  win.webContents.on('will-redirect', (e) => e.preventDefault());
+  // La app no usa cámara, micrófono, ubicación, USB, etc.
+  win.webContents.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
+  win.webContents.session.setPermissionCheckHandler(() => false);
 
   // Menú contextual con sugerencias ortográficas
   win.webContents.on('context-menu', (_e, params) => {
@@ -65,6 +76,14 @@ function createWindow() {
     );
     Menu.buildFromTemplate(items).popup();
   });
+}
+
+// Solo se abren en el navegador enlaces http(s); nunca file:, rutas ni protocolos de otras apps
+function openWebLink(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'https:' || u.protocol === 'http:') shell.openExternal(u.href);
+  } catch { /* URL no válida: se ignora */ }
 }
 
 function send(cmd) {
@@ -128,7 +147,8 @@ function buildMenu() {
         { role: 'resetZoom', label: 'Tamaño real' },
         { type: 'separator' },
         { role: 'togglefullscreen', label: 'Pantalla completa' },
-        { role: 'toggleDevTools', label: 'Herramientas de desarrollo' },
+        // las herramientas de desarrollo solo existen al ejecutar desde el código, no en la app instalada
+        ...(app.isPackaged ? [] : [{ role: 'toggleDevTools', label: 'Herramientas de desarrollo' }]),
       ],
     },
   ];
@@ -224,7 +244,7 @@ ipcMain.handle('file:save', async (_e, opts) => {
   }
   try {
     const lost = await formats.writeFile(target, format, opts.content, opts.page, opts.font, __dirname, () => new BrowserWindow({
-      show: false, webPreferences: { javascript: true, contextIsolation: true },
+      show: false, webPreferences: { javascript: true, contextIsolation: true, sandbox: true, nodeIntegration: false },
     }));
     app.addRecentDocument(target);
     return { path: target, format, name: path.basename(target, path.extname(target)), lost };

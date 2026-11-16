@@ -32,7 +32,7 @@
     "@tiptap/extensions": "^3.34.0",
     "@tiptap/pm": "^3.34.0",
     "@tiptap/starter-kit": "^3.34.0",
-    "electron": "^38.8.6",
+    "electron": "^45.3.3",
     "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2"
   },
@@ -96,5 +96,25 @@
       "buildResources": "build",
       "output": "dist"
     }
+  },
+  "overrides": {
+    "app-builder-lib": {
+      "minimatch": "^11.0.1",
+      "@electron/asar": {
+        "minimatch": "^3.1.5"
+      },
+      "@electron/universal": {
+        "minimatch": "^11.0.1",
+        "dir-compare": {
+          "minimatch": "^3.1.5"
+        }
+      },
+      "ejs": {
+        "minimatch": "^5.1.9"
+      }
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }

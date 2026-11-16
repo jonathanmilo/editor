@@ -106,7 +106,7 @@ corresponde línea por línea con el PDF que se genera.
 
 ## Uso
 
-Requiere [Node.js](https://nodejs.org) 20 o superior.
+Requiere [Node.js](https://nodejs.org) 22.12 o superior.
 
 ```bash
 npm install
@@ -125,6 +125,16 @@ El instalador `.exe` queda en la carpeta `dist/` y asocia la app a los archivos 
 
 El ícono está en `build/` (`icon.svg` es el original; `icon.png` e `icon.ico` se generan a partir de él)
 y `assets/icon.png` es el de la ventana.
+
+## Seguridad
+
+- Electron 45 (sin las vulnerabilidades que `npm audit` reportaba en Electron 38 y `extract-zip`).
+- La interfaz corre aislada (`sandbox`, `contextIsolation`, sin Node): solo accede a las funciones del puente `preload.js`.
+- No se abren ventanas nuevas ni se navega fuera de la app; solo los enlaces `http(s)` se abren en el navegador.
+- Se deniegan todos los permisos (cámara, micrófono, ubicación, USB…), que la app no usa.
+- La app instalada no incluye herramientas de desarrollo.
+- `minimatch` se fuerza a la versión corregida solo donde electron-builder usaba una vulnerable
+  (ver `overrides` en `package.json`).
 
 ## Estructura
 
