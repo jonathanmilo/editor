@@ -108,6 +108,13 @@ function buildMenu() {
       ],
     },
     {
+      label: 'Insertar',
+      submenu: [
+        { label: 'Imagen…', accelerator: 'CmdOrCtrl+Shift+I', click: () => send('insert-image') },
+        { label: 'Tabla', accelerator: 'CmdOrCtrl+Alt+T', click: () => send('insert-table') },
+      ],
+    },
+    {
       label: 'Ver',
       submenu: [
         { label: 'Modo máquina de escribir', accelerator: 'CmdOrCtrl+Shift+T', click: () => send('toggle-typewriter') },
@@ -197,7 +204,7 @@ ipcMain.handle('file:open', async () => {
 
 ipcMain.handle('file:read', (_e, p) => readForRenderer(p));
 
-// opts: { path?, format?, name, text, page, font, dialog }
+// opts: { path?, format?, name, content: { json, html }, page, font, dialog }
 ipcMain.handle('file:save', async (_e, opts) => {
   let target = opts.path;
   let format = opts.format;
@@ -215,11 +222,11 @@ ipcMain.handle('file:save', async (_e, opts) => {
     if (!formats.WRITABLE.includes(format)) { format = first; target += '.' + first; }
   }
   try {
-    await formats.writeFile(target, format, opts.text, opts.page, opts.font, __dirname, () => new BrowserWindow({
+    const lost = await formats.writeFile(target, format, opts.content, opts.page, opts.font, __dirname, () => new BrowserWindow({
       show: false, webPreferences: { javascript: true, contextIsolation: true },
     }));
     app.addRecentDocument(target);
-    return { path: target, format, name: path.basename(target, path.extname(target)) };
+    return { path: target, format, name: path.basename(target, path.extname(target)), lost };
   } catch (err) {
     return { error: `No se pudo guardar: ${err.message}` };
   }

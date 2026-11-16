@@ -1,0 +1,34 @@
+/* Estilos del documento: los usa el editor y también el PDF exportado, para que coincidan. */
+.doc-content {
+  font-family: var(--doc-font, 'Courier Prime', 'Courier New', monospace);
+  font-size: var(--doc-size, 12pt);
+  line-height: var(--doc-lh, 1.38);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  tab-size: 4;
+}
+.doc-content p { margin: 0; }
+.doc-content p:empty::after { content: '\00a0'; } /* párrafo vacío = una línea en blanco */
+.doc-content h1, .doc-content h2, .doc-content h3 { margin: 0; font-weight: 700; line-height: 1.2; }
+.doc-content h1 { font-size: 1.5em; }
+.doc-content h2 { font-size: 1.25em; }
+.doc-content h3 { font-size: 1.1em; }
+.doc-content strong { font-weight: 700; }
+.doc-content ul, .doc-content ol { margin: 0; padding-left: 2.5em; }
+.doc-content li > p { margin: 0; }
+.doc-content blockquote { margin: 0; padding-left: 1em; border-left: 3px solid rgba(127, 127, 127, .5); }
+.doc-content hr { border: 0; border-top: 1px solid rgba(127, 127, 127, .6); margin: .6em 0; }
+.doc-content pre { margin: 0; font: inherit; }
+
+.doc-content table {
+  border-collapse: collapse; table-layout: fixed; width: 100%;
+  margin: .3em 0; white-space: normal;
+}
+.doc-content td, .doc-content th {
+  border: 1px solid currentColor; padding: .1em .4em; vertical-align: top;
+  text-align: left; position: relative; white-space: pre-wrap; min-width: 1em;
+}
+.doc-content th { font-weight: 700; background: rgba(127, 127, 127, .14); }
+.doc-content td > p, .doc-content th > p { margin: 0; }
+
+.doc-content img { display: block; max-width: 100%; height: auto; }

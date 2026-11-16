@@ -188,10 +188,11 @@ body.typewriter:not(.fade-far) #paper {
   will-change: transform;
 }
 body.animating #page { transition: transform .26s var(--ease); }
+/* La hoja se dibuja en píxeles de documento (96 por pulgada) y se escala con zoom */
 #sheet {
   width: var(--sheet-w);
   padding: var(--pad-t) var(--pad-r) var(--pad-b) var(--pad-l);
-  font-family: var(--font-text); font-size: var(--font-size); line-height: var(--line-px);
+  zoom: var(--zoom, 1);
   transition: background-color .3s, box-shadow .3s;
 }
 #col { position: relative; }
@@ -206,18 +207,60 @@ body.show-sheet #col {
     transparent 0, transparent calc(var(--page-px) - 1px),
     var(--break) calc(var(--page-px) - 1px), var(--break) var(--page-px));
 }
-#text {
-  display: block; width: 100%; margin: 0; padding: 0; border: 0; outline: 0; resize: none; overflow: hidden;
-  background: transparent; color: var(--ink); caret-color: var(--ink);
-  font: inherit; line-height: inherit;
-  white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; tab-size: 4;
+#text .doc-content {
+  --doc-font: var(--font-text);
+  --doc-size: var(--font-size);
+  --doc-lh: var(--line-ratio);
+  outline: 0; color: var(--ink); caret-color: var(--ink);
+  min-height: calc(var(--font-size) * var(--line-ratio));
   user-select: text;
 }
-#text::placeholder { color: var(--ink-soft); }
-#text::selection { background: var(--selection); }
+#text .doc-content ::selection { background: var(--selection); }
+#text .doc-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder); color: var(--ink-soft); float: left; height: 0; pointer-events: none;
+}
+#text .doc-content th { background: rgba(127, 127, 127, .14); }
+#text .selectedCell::after {
+  content: ''; position: absolute; inset: 0; background: var(--selection); pointer-events: none;
+}
+#text .tableWrapper { overflow-x: auto; }
+#text img.ProseMirror-selectednode, #text [data-resize-container].ProseMirror-selectednode img { outline: 2px solid var(--led-on); }
+#text [data-resize-handle] {
+  position: absolute; width: 10px; height: 10px; background: var(--led-on); border: 1px solid var(--rail);
+  border-radius: 2px; opacity: 0 !important; transition: opacity .15s; z-index: 2;
+}
+#text [data-resize-container]:hover [data-resize-handle],
+#text .ProseMirror-selectednode [data-resize-handle],
+#text [data-resize-state="true"] [data-resize-handle] { opacity: 1 !important; }
+#text .ProseMirror-gapcursor:after { border-top-color: var(--ink); }
 /* En modo máquina el cursor lo representa el tipo (la "T") */
-body.typewriter #text { caret-color: transparent; }
-body.typewriter #text.has-selection { caret-color: transparent; }
+body.typewriter #text .doc-content { caret-color: transparent; }
+
+/* ===================== Barra de formato ===================== */
+#toolbar {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 21;
+  display: flex; align-items: center; gap: 2px; padding: 3px 6px; border-radius: 11px;
+  color: var(--ui); opacity: .55; transition: opacity .25s, background .25s;
+  -webkit-app-region: no-drag;
+}
+#toolbar:hover, #toolbar:focus-within, body.in-table #toolbar { opacity: 1; background: rgba(127,127,127,.14); }
+#toolbar button {
+  border: 0; background: transparent; color: inherit; min-width: 28px; height: 28px; padding: 0 6px; border-radius: 7px;
+  font-size: 13px; display: inline-grid; place-items: center;
+}
+#toolbar button:hover { background: rgba(127,127,127,.2); }
+#toolbar button.on { background: rgba(201, 138, 43, .3); }
+#toolbar svg { width: 16px; height: 16px; }
+#toolbar .sep { width: 1px; height: 16px; background: currentColor; opacity: .25; margin: 0 4px; }
+#toolbar button { white-space: nowrap; }
+#toolbar .table-tools {
+  display: none; align-items: center; gap: 2px;
+  position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  padding: 3px 6px; border-radius: 11px; background: rgba(127,127,127,.18); backdrop-filter: blur(6px);
+}
+#toolbar .table-tools .sep:first-child { display: none; }
+body.in-table #toolbar .table-tools { display: inline-flex; }
+@media (max-width: 1100px) { #toolbar { top: 46px; } }
 
 /* Modo normal (sin máquina): documento con scroll */
 body:not(.typewriter) #paper { overflow-y: auto; -webkit-mask-image: none; }
@@ -396,3 +439,7 @@ input[type=checkbox] { accent-color: #c98a2b; }
   background: rgba(127,127,127,.12); opacity: 0; pointer-events: none; transition: opacity .2s;
 }
 body.dragging #drop-hint { opacity: 1; }
+
+/* En modo normal el texto se desplaza por debajo de la barra superior */
+body:not(.typewriter).view-editor #topbar { background: linear-gradient(to bottom, var(--bg) 75%, transparent); height: 64px; }
+body:not(.typewriter).view-editor #notes-btn { background: var(--bg); }

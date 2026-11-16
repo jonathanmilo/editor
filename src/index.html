@@ -2,15 +2,20 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data:" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:" />
   <title>Máquina de escribir</title>
   <link rel="stylesheet" href="../node_modules/@fontsource/courier-prime/400.css" />
   <link rel="stylesheet" href="../node_modules/@fontsource/courier-prime/700.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/courier-prime/400-italic.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/courier-prime/700-italic.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/700.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/400-italic.css" />
   <link rel="stylesheet" href="../node_modules/@fontsource/ibm-plex-mono/400.css" />
   <link rel="stylesheet" href="../node_modules/@fontsource/newsreader/400-italic.css" />
   <link rel="stylesheet" href="../node_modules/@fontsource/newsreader/400.css" />
   <link rel="stylesheet" href="../node_modules/@fontsource/inter/400.css" />
   <link rel="stylesheet" href="../node_modules/@fontsource/inter/500.css" />
+  <link rel="stylesheet" href="content.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="theme-light typewriter view-library">
@@ -44,7 +49,7 @@
       <div id="page">
         <div id="sheet">
           <div id="col">
-            <textarea id="text" spellcheck="true" autocomplete="off" placeholder="Empieza a escribir…"></textarea>
+            <div id="text"></div>
           </div>
         </div>
       </div>
@@ -86,6 +91,41 @@
         <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
       </button>
     </header>
+
+    <nav id="toolbar" aria-label="Formato">
+      <button data-cmd="bold" title="Negrita (Ctrl+B)"><b>B</b></button>
+      <button data-cmd="italic" title="Cursiva (Ctrl+I)"><i>I</i></button>
+      <button data-cmd="underline" title="Subrayado (Ctrl+U)"><u>S</u></button>
+      <span class="sep"></span>
+      <button data-cmd="h1" title="Título 1">T1</button>
+      <button data-cmd="h2" title="Título 2">T2</button>
+      <button data-cmd="bulletList" title="Lista con viñetas">
+        <svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>
+      </button>
+      <button data-cmd="orderedList" title="Lista numerada">
+        <svg viewBox="0 0 24 24"><path d="M10 6h10M10 12h10M10 18h10M4 5l1.5-1v5M3.5 14.5a1.5 1.5 0 0 1 3 .2c0 1-3 1.8-3 3.3h3"/></svg>
+      </button>
+      <span class="sep"></span>
+      <button data-cmd="table" title="Insertar tabla">
+        <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4.5v15M15 4.5v15"/></svg>
+      </button>
+      <button data-cmd="image" title="Insertar imagen (también puedes pegarla o arrastrarla)">
+        <svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><circle cx="9" cy="10" r="1.6"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>
+      </button>
+      <span class="table-tools">
+        <span class="sep"></span>
+        <button data-cmd="addRowAfter" title="Añadir fila debajo">+ fila</button>
+        <button data-cmd="addColumnAfter" title="Añadir columna a la derecha">+ col.</button>
+        <button data-cmd="deleteRow" title="Eliminar fila">− fila</button>
+        <button data-cmd="deleteColumn" title="Eliminar columna">− col.</button>
+        <button data-cmd="toggleHeaderRow" title="Fila de encabezado">Encab.</button>
+        <button data-cmd="mergeOrSplit" title="Combinar o dividir celdas seleccionadas">Combinar</button>
+        <button data-cmd="deleteTable" title="Eliminar tabla">
+          <svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>
+        </button>
+      </span>
+      <input type="file" id="image-input" accept="image/*" multiple hidden />
+    </nav>
 
     <button id="notes-btn" title="Ctrl+Shift+N">Notas de escritura
       <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg>
@@ -213,6 +253,7 @@
   <div id="toast" role="status"></div>
   <div id="drop-hint">Suelta el archivo para abrirlo</div>
 
+  <script src="vendor/editor.js"></script>
   <script src="sound.js"></script>
   <script src="renderer.js"></script>
 </body>

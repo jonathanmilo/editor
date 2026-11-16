@@ -8,20 +8,42 @@ Editor de texto de escritorio (Windows, macOS y Linux) hecho con Electron, con u
 - Dos **topes de margen** en el riel se arrastran para fijar los márgenes, carácter a carácter.
 - Sonidos de teclas, retorno de carro y timbre de fin de línea (sintetizados, se pueden apagar).
 
+## Editor
+
+El texto es **enriquecido**: títulos, negritas, cursivas, subrayado, listas, **tablas** e **imágenes**,
+sin perder la máquina de escribir (riel, carro, luz y hoja).
+
+- **Barra de formato** arriba al centro; dentro de una tabla aparece una segunda fila para añadir o
+  quitar filas y columnas, poner encabezado, combinar celdas o borrar la tabla.
+- **Imágenes**: botón de imagen (Ctrl+Shift+I), **pegar** (Ctrl+V) o **arrastrar** al texto.
+  Se redimensionan desde las esquinas.
+- **Tablas**: botón de tabla (Ctrl+Alt+T); Tab pasa a la celda siguiente.
+- Al pegar texto plano se conservan las líneas en blanco y las tabulaciones.
+
 ## Formatos
 
-| Formato | Abrir | Editar y guardar | Notas |
+| Formato | Abrir | Guardar | Qué se conserva |
 |---|:-:|:-:|---|
-| Word `.docx` | ✓ | ✓ | Conserva tamaño de hoja, orientación, márgenes y tamaño de letra |
-| Word 97-2003 `.doc` | ✓ | — | Se guarda como `.docx` |
-| PDF `.pdf` | ✓ | ✓ | Reconstruye párrafos, sangrías y columnas simples; deduce hoja y márgenes |
-| Texto `.txt` | ✓ | ✓ | |
-| Markdown `.md` | ✓ | ✓ | |
+| Word `.docx` | ✓ | ✓ | Texto, títulos, negritas, listas, tablas, imágenes, hoja, márgenes y letra |
+| Word 97-2003 `.doc` | ✓ | — | Solo el texto; se guarda como `.docx` |
+| PDF `.pdf` | ✓ | ✓ | Ver abajo |
+| Texto `.txt` | ✓ | ✓ | Solo texto; las tablas quedan separadas por tabulaciones |
+| Markdown `.md` | ✓ | ✓ | Títulos, negritas, listas, tablas e imágenes |
 
-El editor trabaja con **texto plano**, como una máquina de escribir. Al guardar sobre un
-Word o PDF que vino de fuera, la app avisa antes de sobrescribir, porque se pierden
-imágenes, tablas y estilos (negritas, títulos…). Siempre puedes guardar una copia.
-Los PDF escaneados (imágenes sin texto) no se pueden abrir.
+### Cómo se leen los PDF
+
+Un PDF no guarda párrafos ni tablas: solo dibuja letras, líneas e imágenes en coordenadas.
+La app los reconstruye:
+
+- **Tablas con bordes**: a partir de las líneas dibujadas (cuadrícula exacta, celdas de varias líneas y celdas combinadas en horizontal).
+- **Tablas sin bordes**: por columnas alineadas en líneas consecutivas.
+- **Imágenes**: se extraen con su tamaño y posición.
+- **Títulos** por tamaño de letra, **negritas y cursivas** por la tipografía, y **párrafos** uniendo las líneas que se cortaron por falta de espacio.
+- **Hoja y márgenes** a partir de la página.
+
+Limitaciones: los PDF escaneados (solo imagen) no tienen texto que leer, y las maquetaciones
+complejas (varias columnas de texto, tablas sin bordes ni alineación) pueden no reconstruirse
+perfectamente. Al sobrescribir un Word o PDF que vino de fuera, la app avisa antes y ofrece guardar una copia.
 
 Formas de abrir un archivo: botón **Abrir** (Ctrl+O), **arrastrarlo** a la ventana, o
 **«Abrir con…» / doble clic** si la app está instalada.
@@ -53,6 +75,9 @@ corresponde línea por línea con el PDF que se genera.
 | Ctrl+S | Guardar (en el archivo vinculado, o pregunta dónde) |
 | Ctrl+Shift+S | Guardar como… |
 | Ctrl+P | Guardar una copia en PDF |
+| Ctrl+B / Ctrl+I / Ctrl+U | Negrita / cursiva / subrayado |
+| Ctrl+Shift+I | Insertar imagen |
+| Ctrl+Alt+T | Insertar tabla |
 | Ctrl+Shift+T | Activar/desactivar la máquina de escribir |
 | Ctrl+Shift+L | Tema claro/oscuro |
 | Ctrl+Shift+N | Notas de escritura |
@@ -69,6 +94,8 @@ npm install
 npm start
 ```
 
+`npm start` compila primero el editor (`npm run build`, con esbuild) y luego abre la app.
+
 ### Crear el instalador para Windows
 
 ```bash
@@ -80,10 +107,15 @@ El instalador `.exe` queda en la carpeta `dist/` y asocia la app a los archivos 
 ## Estructura
 
 ```
-main.js          proceso principal: ventana, menús, diálogos, almacenamiento
-preload.js       puente seguro con la interfaz
-lib/formats.js   lectura y escritura de .docx, .doc, .pdf, .txt y .md
-src/             interfaz (HTML, CSS, lógica del editor y sonidos)
+main.js            proceso principal: ventana, menús, diálogos, almacenamiento
+preload.js         puente seguro con la interfaz
+lib/formats.js     coordina la lectura y escritura de cada formato
+lib/docx-io.js     Word: lectura (mammoth) y escritura (docx)
+lib/pdf-reader.js  PDF → documento: tablas, imágenes, títulos y párrafos
+lib/text-io.js     texto plano y Markdown
+src/editor/        editor enriquecido (Tiptap), se compila a src/vendor/
+src/content.css    estilos del documento, compartidos por el editor y el PDF
+src/               interfaz (HTML, CSS, lógica de la máquina de escribir y sonidos)
 ```
 
 La biblioteca guarda cada documento como JSON en la carpeta de datos de la aplicación

@@ -1,12 +1,16 @@
 {
   "name": "maquina-de-escribir",
   "productName": "Máquina de escribir",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Editor de texto de escritorio con modo máquina de escribir",
   "main": "main.js",
   "scripts": {
+    "build": "esbuild src/editor/editor.js --bundle --format=iife --minify --target=chrome120 --outfile=src/vendor/editor.js",
+    "prestart": "npm run build",
     "start": "electron .",
+    "predist": "npm run build",
     "dist": "electron-builder",
+    "predist:win": "npm run build",
     "dist:win": "electron-builder --win"
   },
   "license": "MIT",
@@ -22,8 +26,15 @@
     "word-extractor": "^1.0.4"
   },
   "devDependencies": {
+    "@tiptap/core": "^3.34.0",
+    "@tiptap/extension-image": "^3.34.0",
+    "@tiptap/extension-table": "^3.34.0",
+    "@tiptap/extensions": "^3.34.0",
+    "@tiptap/pm": "^3.34.0",
+    "@tiptap/starter-kit": "^3.34.0",
     "electron": "^38.8.6",
-    "electron-builder": "^26.18.0"
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2"
   },
   "build": {
     "appId": "app.maquinadeescribir",
@@ -32,7 +43,8 @@
       "main.js",
       "preload.js",
       "lib/**/*",
-      "src/**/*"
+      "src/**/*",
+      "!src/editor/**"
     ],
     "win": {
       "target": "nsis"

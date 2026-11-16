@@ -3,12 +3,13 @@
   const $ = (s) => document.querySelector(s);
   const body = document.body;
   const root = document.documentElement;
-  const ta = $('#text');
+  const host = $('#text');
   const page = $('#page');
   const col = $('#col');
   const paper = $('#paper');
   const leds = [...document.querySelectorAll('#carriage .body i')];
   const isDesktop = !!window.api;
+  const { textToHtml, PARSE } = window.RichEditor;
 
   // ---------------- Almacenamiento (Electron o, si no, localStorage) ----------------
   const api = window.api || (() => {
@@ -30,19 +31,19 @@
           const inp = Object.assign(document.createElement('input'), { type: 'file', accept: '.txt,.md,text/plain' });
           inp.onchange = async () => {
             const f = inp.files[0];
-            res(f ? { name: f.name.replace(/\.[^.]+$/, ''), format: 'txt', text: await f.text() } : null);
+            res(f ? { name: f.name.replace(/\.[^.]+$/, ''), format: 'txt', html: textToHtml(await f.text()) } : null);
           };
           inp.click();
         });
       },
-      async saveFile({ format, name, text }) {
+      async saveFile({ format, name, content }) {
         if (format !== 'txt' && format !== 'md') return { error: 'Word y PDF solo están disponibles en la app de escritorio' };
         const a = Object.assign(document.createElement('a'), {
-          href: URL.createObjectURL(new Blob([text], { type: 'text/plain' })),
+          href: URL.createObjectURL(new Blob([content.text], { type: 'text/plain' })),
           download: `${name}.${format}`,
         });
         a.click();
-        return { name, format };
+        return { name, format, lost: [] };
       },
       async confirm({ message, buttons }) { return confirm(message) ? 0 : buttons.length - 1; },
       reveal() {}, setTheme() {}, onMenu() {}, onOpenPath() {}, readPath: async () => null, pathForFile: () => null,
@@ -89,11 +90,12 @@
   };
   let S = { ...DEFAULTS };
   try { Object.assign(S, JSON.parse(localStorage.getItem('mde:settings')) || {}); } catch { /* valores por defecto */ }
-  if (S.font.includes(',')) S.font = S.font.split(',')[0].replace(/'/g, '').trim(); // ajustes de la versión anterior
+  if (S.font.includes(',')) S.font = S.font.split(',')[0].replace(/'/g, '').trim(); // ajustes de la primera versión
   S.pageDefault = fixPage(S.pageDefault);
   const saveSettings = () => { try { localStorage.setItem('mde:settings', JSON.stringify(S)); } catch { /* ignorar */ } };
 
   let doc = null;
+  let ed = null; // editor enriquecido del documento abierto
   const P = () => (doc ? doc.page : S.pageDefault);
 
   function applySettings() {
@@ -129,7 +131,7 @@
   $('#s-fade').onchange = (e) => set('fade', e.target.checked);
   $('#s-strict').onchange = (e) => set('strict', e.target.checked);
   $('#s-sheet').onchange = (e) => set('showSheet', e.target.checked);
-  $('#tw-switch').onchange = (e) => { set('typewriter', e.target.checked); ta.focus(); };
+  $('#tw-switch').onchange = (e) => { set('typewriter', e.target.checked); ed?.commands.focus(); };
   $('#theme-btn').onclick = () => set('theme', S.theme === 'light' ? 'dark' : 'light');
 
   // ----- Formulario de la hoja -----
@@ -186,109 +188,132 @@
   $('#p-reset').onclick = () => editPage({ ...S.pageDefault });
 
   // ---------------- Medidas ----------------
+  // La hoja se dibuja en píxeles de documento (96 por pulgada) y se escala con CSS zoom.
   const CM_PER_IN = 2.54;
   const PX_PER_CM = 96 / CM_PER_IN;
   let charRatio = 0.6; // ancho de un carácter / tamaño de letra (se mide con la fuente real)
   const charCm = (pt) => (pt / 72) * CM_PER_IN * charRatio;
   const lineCm = (p) => (p.fontSize * 1.2 * p.spacing / 72) * CM_PER_IN;
   const linesPerPage = (p) => Math.max(1, Math.floor((sheetDims(p).h - p.top - p.bottom) / lineCm(p) + 0.001));
+  const colPx = () => { const p = P(); return (sheetDims(p).w - p.left - p.right) * PX_PER_CM; };
 
-  const mirror = document.createElement('div');
-  Object.assign(mirror.style, {
-    position: 'absolute', top: '0', left: '0', width: '100%', visibility: 'hidden', pointerEvents: 'none',
-    whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'normal', tabSize: '4',
+  const measure = document.createElement('span');
+  Object.assign(measure.style, {
+    position: 'absolute', top: '0', left: '0', visibility: 'hidden', pointerEvents: 'none', whiteSpace: 'pre',
+    fontFamily: 'var(--font-text)', fontSize: 'var(--font-size)',
   });
-  col.appendChild(mirror);
-  const marker = document.createElement('span');
-
-  function caretPos() {
-    const pos = ta.selectionDirection === 'backward' ? ta.selectionStart : ta.selectionEnd;
-    const v = ta.value;
-    mirror.textContent = v.slice(0, pos);
-    marker.textContent = v.slice(pos) || '.';
-    mirror.appendChild(marker);
-    return { top: marker.offsetTop, left: marker.offsetLeft, pos };
-  }
-
-  function charWidthPx() {
-    mirror.textContent = '';
-    const s = document.createElement('span');
-    s.textContent = '0'.repeat(20);
-    mirror.appendChild(s);
-    return s.getBoundingClientRect().width / 20;
-  }
+  measure.textContent = '0'.repeat(20);
+  col.appendChild(measure);
 
   // ---------------- Disposición (hoja, riel, carro, topes) ----------------
-  let railY = 0, review = 0, chW = 12, lineH = 28, scale = PX_PER_CM, lastLineTop = null, lastCol = 0, bellRung = false, raf = 0;
+  let railY = 0, review = 0, chW = 12, zoom = 1, lastLine = null, lastCol = 0, bellRung = false, raf = 0;
   const GAP = 26; // distancia entre la línea activa y el riel
 
   function geometry() {
     const p = P();
     const { w, h } = sheetDims(p);
-    const want = PX_PER_CM * S.zoom / 100;
-    const fit = (window.innerWidth - 64) / (w * want);
-    scale = want * Math.min(1, fit); // px por cm
-    const fontPx = (p.fontSize / 72) * CM_PER_IN * scale;
-    lineH = fontPx * 1.2 * p.spacing;
+    const want = S.zoom / 100;
+    zoom = want * Math.min(1, (window.innerWidth - 64) / (w * PX_PER_CM * want));
+    const fontPx = (p.fontSize / 72) * 96;
+    const ratio = 1.2 * p.spacing;
+    root.style.setProperty('--zoom', zoom.toFixed(4));
     root.style.setProperty('--font-size', fontPx.toFixed(3) + 'px');
-    root.style.setProperty('--line-px', lineH.toFixed(3) + 'px');
-    root.style.setProperty('--sheet-w', (w * scale).toFixed(2) + 'px');
-    root.style.setProperty('--sheet-h', (h * scale).toFixed(2) + 'px');
-    root.style.setProperty('--pad-t', (p.top * scale).toFixed(2) + 'px');
-    root.style.setProperty('--pad-b', (p.bottom * scale).toFixed(2) + 'px');
-    root.style.setProperty('--pad-l', (p.left * scale).toFixed(2) + 'px');
-    root.style.setProperty('--pad-r', (p.right * scale).toFixed(2) + 'px');
-    root.style.setProperty('--page-px', (linesPerPage(p) * lineH).toFixed(3) + 'px');
+    root.style.setProperty('--line-ratio', ratio.toFixed(4));
+    root.style.setProperty('--sheet-w', (w * PX_PER_CM).toFixed(2) + 'px');
+    root.style.setProperty('--sheet-h', (h * PX_PER_CM).toFixed(2) + 'px');
+    root.style.setProperty('--pad-t', (p.top * PX_PER_CM).toFixed(2) + 'px');
+    root.style.setProperty('--pad-b', (p.bottom * PX_PER_CM).toFixed(2) + 'px');
+    root.style.setProperty('--pad-l', (p.left * PX_PER_CM).toFixed(2) + 'px');
+    root.style.setProperty('--pad-r', (p.right * PX_PER_CM).toFixed(2) + 'px');
+    root.style.setProperty('--page-px', (linesPerPage(p) * fontPx * ratio).toFixed(3) + 'px');
+    return { fontPx, linePx: fontPx * ratio };
+  }
+
+  // Posición del cursor en pantalla
+  function caretRect() {
+    if (!ed) return null;
+    try {
+      const sel = ed.state.selection;
+      if (sel.node) { // imagen u otro bloque seleccionado: se usa su caja completa
+        const r = ed.view.nodeDOM(sel.from)?.getBoundingClientRect();
+        if (r) return { left: r.right, top: r.top, bottom: r.bottom };
+      }
+      // Se mide con la selección del navegador: coordsAtPos de ProseMirror no tiene en cuenta el zoom de CSS
+      let { node, offset } = ed.view.domAtPos(sel.head);
+      // apuntar a un nodo de texto vecino si la posición cae entre elementos
+      if (node.nodeType === 1) {
+        const before = node.childNodes[offset - 1], after = node.childNodes[offset];
+        if (before && before.nodeType === 3) { node = before; offset = before.length; }
+        else if (after && after.nodeType === 3) { node = after; offset = 0; }
+      }
+      let r = null;
+      if (node.nodeType === 3 && node.length) {
+        // caja del carácter anterior (borde derecho) o del siguiente (borde izquierdo)
+        const range = document.createRange();
+        if (offset > 0) {
+          range.setStart(node, offset - 1); range.setEnd(node, offset);
+          const q = [...range.getClientRects()].pop();
+          if (q) r = { left: q.right, top: q.top, bottom: q.bottom };
+        } else {
+          range.setStart(node, 0); range.setEnd(node, 1);
+          const q = range.getClientRects()[0];
+          if (q) r = { left: q.left, top: q.top, bottom: q.bottom };
+        }
+      }
+      if (!r) {
+        // posición sin caja propia (párrafo vacío, inicio de línea): se usa el elemento
+        const el = node.nodeType === 3 ? node.parentElement : (node.childNodes[offset] || node);
+        const box = (el.nodeType === 1 ? el : node.parentElement).getBoundingClientRect();
+        const lh = parseFloat(getComputedStyle(el.nodeType === 1 ? el : node.parentElement).lineHeight) * zoom || box.height;
+        return { left: box.left, top: box.top, bottom: box.top + Math.min(box.height, lh) };
+      }
+      return r;
+    } catch { return null; }
   }
 
   function layout(instant = false) {
     railY = Math.round(window.innerHeight * S.rail / 100);
     root.style.setProperty('--rail-y', railY + 'px');
-    geometry();
-    chW = charWidthPx();
-    const fontPx = parseFloat(root.style.getPropertyValue('--font-size'));
-    if (fontPx > 0 && chW > 0) charRatio = chW / fontPx;
+    const g = geometry();
+    chW = measure.getBoundingClientRect().width / 20;
+    if (chW > 0) charRatio = chW / (g.fontPx * zoom);
+    if (!ed) return;
 
-    const keep = paper.scrollTop;
-    ta.style.height = 'auto';
-    ta.style.height = ta.scrollHeight + 'px';
-    if (!S.typewriter) paper.scrollTop = keep;
-
-    const c = caretPos();
-    const padT = P().top * scale;
+    const c = caretRect();
+    const pageRect = page.getBoundingClientRect();
     const colRect = col.getBoundingClientRect();
+    const lineV = g.linePx * zoom;
+    if (!c) return;
+    const lineBottom = c.bottom + Math.max(0, (lineV - (c.bottom - c.top)) / 2);
 
     if (S.typewriter) {
-      const maxReview = padT + c.top;
-      const minReview = -(ta.scrollHeight - c.top - lineH);
-      review = Math.max(minReview, Math.min(maxReview, review));
-      const ty = Math.round(railY - GAP - (padT + c.top + lineH) + review);
+      if (paper.scrollTop) paper.scrollTop = 0;
+      const rel = lineBottom - pageRect.top; // posición del cursor dentro de la página (no depende del desplazamiento)
+      review = Math.max(-(pageRect.height - rel), Math.min(rel, review));
+      const ty = Math.round(railY - GAP - rel + review);
       body.classList.toggle('animating', !instant);
       page.style.transform = `translate(-50%, ${ty}px)`;
-      root.style.setProperty('--cx', Math.round(colRect.left + c.left + chW / 2) + 'px');
+      root.style.setProperty('--cx', Math.round(c.left + chW / 2) + 'px');
       root.style.setProperty('--stop-l', colRect.left.toFixed(1) + 'px');
       root.style.setProperty('--stop-r', colRect.right.toFixed(1) + 'px');
     } else {
-      const y = colRect.top + c.top;
-      if (y < 80) paper.scrollTop -= 80 - y;
-      else if (y > window.innerHeight - 120) paper.scrollTop += y - (window.innerHeight - 120);
+      if (c.top < 90) paper.scrollTop -= 90 - c.top;
+      else if (c.bottom > window.innerHeight - 120) paper.scrollTop += c.bottom - (window.innerHeight - 120);
     }
 
     // páginas
-    const lpp = linesPerPage(P());
-    const curLine = Math.round(c.top / lineH);
-    const totalLines = Math.max(1, Math.round(ta.scrollHeight / lineH));
-    const pages = Math.ceil(totalLines / lpp);
-    $('#pagecount').textContent = `Pág. ${Math.min(pages, Math.floor(curLine / lpp) + 1)} de ${pages}`;
+    const pageV = linesPerPage(P()) * lineV;
+    const total = Math.max(1, Math.ceil((host.getBoundingClientRect().height - 1) / pageV));
+    const cur = Math.min(total, Math.floor((c.top - colRect.top) / pageV) + 1);
+    $('#pagecount').textContent = `Pág. ${Math.max(1, cur)} de ${total}`;
 
     // timbre cerca del final de la línea (como una máquina real)
-    const cols = Math.floor(ta.clientWidth / chW);
-    const colN = Math.round(c.left / chW);
-    if (c.top !== lastLineTop) bellRung = false;
-    if (S.sound && !bellRung && colN >= cols - 8 && colN > lastCol && document.activeElement === ta) {
-      TypeSound.bell(); bellRung = true;
-    }
-    lastLineTop = c.top; lastCol = colN;
+    const cols = Math.floor(colRect.width / chW);
+    const colN = Math.round((c.left - colRect.left) / chW);
+    const line = Math.round(c.top);
+    if (line !== lastLine) bellRung = false;
+    if (S.sound && !bellRung && colN >= cols - 8 && colN > lastCol && ed.isFocused) { TypeSound.bell(); bellRung = true; }
+    lastLine = line; lastCol = colN;
   }
 
   const schedule = (instant) => {
@@ -297,7 +322,10 @@
   };
 
   window.addEventListener('resize', () => layout(true));
-  document.addEventListener('selectionchange', () => { if (document.activeElement === ta) schedule(); });
+  // en modo máquina el papel nunca se desplaza: lo mueve el riel
+  paper.addEventListener('scroll', () => { if (S.typewriter && paper.scrollTop) { paper.scrollTop = 0; schedule(true); } });
+  // si cambia la altura del texto (imágenes que terminan de cargar, tablas...) se recoloca el riel
+  new ResizeObserver(() => schedule(true)).observe(host);
   document.fonts.ready.then(() => { layout(true); updateReadout(); });
 
   // Rueda del ratón: releer el texto sin mover el cursor
@@ -309,7 +337,7 @@
   }, { passive: false });
 
   paper.addEventListener('mousedown', (e) => {
-    if (e.target === paper || e.target === page || e.target.id === 'sheet') { e.preventDefault(); ta.focus(); }
+    if (ed && (e.target === paper || e.target === page || e.target.id === 'sheet' || e.target === col)) { e.preventDefault(); ed.commands.focus(); }
   });
 
   // ---------------- Topes de margen (arrastrables, como en la máquina) ----------------
@@ -322,6 +350,7 @@
       el.setPointerCapture(e.pointerId);
       el.classList.add('drag');
       const sheetRect = $('#sheet').getBoundingClientRect();
+      const scale = PX_PER_CM * zoom; // px de pantalla por cm
       const move = (ev) => {
         const p = doc.page;
         const { w } = sheetDims(p);
@@ -334,7 +363,8 @@
         fillPageForm();
         const cols = Math.floor((w - doc.page.left - doc.page.right) / step + 0.001);
         tip.textContent = `${side === 'left' ? 'Izquierdo' : 'Derecho'} ${doc.page[side].toFixed(1).replace('.', ',')} cm · ${cols} car.`;
-        tip.style.left = (side === 'left' ? $('#col').getBoundingClientRect().left : $('#col').getBoundingClientRect().right) + 'px';
+        const r = col.getBoundingClientRect();
+        tip.style.left = (side === 'left' ? r.left : r.right) + 'px';
         tip.classList.add('show');
       };
       const up = () => {
@@ -342,8 +372,8 @@
         tip.classList.remove('show');
         el.removeEventListener('pointermove', move);
         el.removeEventListener('pointerup', up);
-        dirty();
-        ta.focus();
+        dirty(false);
+        ed?.commands.focus();
       };
       el.addEventListener('pointermove', move);
       el.addEventListener('pointerup', up);
@@ -352,7 +382,7 @@
   }
   dragStop('left'); dragStop('right');
 
-  // ---------------- Escritura ----------------
+  // ---------------- Escritura: sonido, golpe del tipo y modo estricto ----------------
   let strikeT;
   function strike() {
     body.classList.remove('typing'); void body.offsetWidth; body.classList.add('typing');
@@ -361,37 +391,68 @@
     strikeT = setTimeout(() => { leds[2].classList.remove('on'); body.classList.remove('typing'); }, 90);
   }
 
-  ta.addEventListener('keydown', (e) => {
-    if (S.strict && (e.key === 'Backspace' || e.key === 'Delete' || (e.ctrlKey && (e.key === 'x' || e.key === 'z')))) {
-      e.preventDefault(); toast('Modo estricto: no se puede borrar'); return;
-    }
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      document.execCommand('insertText', false, '\t');
-    }
+  // en fase de captura: se ejecuta antes que el editor
+  col.addEventListener('keydown', (e) => {
+    if (!ed) return;
+    const del = e.key === 'Backspace' || e.key === 'Delete' || ((e.ctrlKey || e.metaKey) && ['x', 'z'].includes(e.key.toLowerCase()));
+    if (S.strict && del) { e.preventDefault(); e.stopPropagation(); toast('Modo estricto: no se puede borrar'); return; }
     review = 0;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const printable = e.key.length === 1;
-    if (printable || e.key === 'Enter' || e.key === 'Backspace' || e.key === 'Delete' || e.key === 'Tab') strike();
+    if (printable || ['Enter', 'Backspace', 'Delete', 'Tab'].includes(e.key)) strike();
     if (!S.sound || e.repeat) return;
     if (e.key === 'Enter') TypeSound.carriageReturn();
     else if (e.key === ' ') TypeSound.key('space');
     else if (e.key === 'Backspace' || e.key === 'Delete') TypeSound.key('back');
     else if (printable) TypeSound.key();
+  }, true);
+  col.addEventListener('beforeinput', (e) => {
+    if (S.strict && /^delete/.test(e.inputType)) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+  col.addEventListener('cut', (e) => { if (S.strict) { e.preventDefault(); e.stopPropagation(); } }, true);
+
+  // ---------------- Barra de formato ----------------
+  const toolbarActions = {
+    bold: (c) => c.toggleBold(),
+    italic: (c) => c.toggleItalic(),
+    underline: (c) => c.toggleUnderline(),
+    h1: (c) => c.toggleHeading({ level: 1 }),
+    h2: (c) => c.toggleHeading({ level: 2 }),
+    bulletList: (c) => c.toggleBulletList(),
+    orderedList: (c) => c.toggleOrderedList(),
+    table: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }),
+    addRowAfter: (c) => c.addRowAfter(),
+    addColumnAfter: (c) => c.addColumnAfter(),
+    deleteRow: (c) => c.deleteRow(),
+    deleteColumn: (c) => c.deleteColumn(),
+    toggleHeaderRow: (c) => c.toggleHeaderRow(),
+    mergeOrSplit: (c) => c.mergeOrSplit(),
+    deleteTable: (c) => c.deleteTable(),
+  };
+  document.querySelectorAll('#toolbar [data-cmd]').forEach((b) => {
+    b.addEventListener('mousedown', (e) => e.preventDefault()); // no quitar el foco del texto
+    b.addEventListener('click', () => {
+      if (!ed) return;
+      const cmd = b.dataset.cmd;
+      if (cmd === 'image') { $('#image-input').click(); return; }
+      toolbarActions[cmd](ed.chain().focus()).run();
+    });
+  });
+  $('#image-input').addEventListener('change', (e) => {
+    if (ed && e.target.files.length) ed.insertImages([...e.target.files]);
+    e.target.value = '';
   });
 
-  ta.addEventListener('beforeinput', (e) => {
-    if (S.strict && e.inputType.startsWith('delete')) e.preventDefault();
-  });
-
-  ta.addEventListener('input', () => {
-    review = 0;
-    updateCount();
-    dirty(true);
-    layout();
-  });
-
-  ta.addEventListener('click', () => { review = 0; schedule(); });
+  function updateToolbar() {
+    if (!ed) return;
+    const active = {
+      bold: ed.isActive('bold'), italic: ed.isActive('italic'), underline: ed.isActive('underline'),
+      h1: ed.isActive('heading', { level: 1 }), h2: ed.isActive('heading', { level: 2 }),
+      bulletList: ed.isActive('bulletList'), orderedList: ed.isActive('orderedList'),
+    };
+    document.querySelectorAll('#toolbar [data-cmd]').forEach((b) => b.classList.toggle('on', !!active[b.dataset.cmd]));
+    body.classList.toggle('in-table', ed.isActive('table'));
+  }
 
   // ---------------- Documento actual ----------------
   let saveT, savedT;
@@ -399,10 +460,11 @@
 
   const countWords = (t) => (t.match(/[\p{L}\p{N}][\p{L}\p{N}'’\-]*/gu) || []).length;
   const titleOf = (t) => (t.split('\n').find((l) => l.trim()) || 'Sin título').trim().slice(0, 70);
-  const fileBase = () => (doc.source?.name || titleOf(ta.value)).replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'Documento';
+  const plainText = () => (ed ? ed.getText({ blockSeparator: '\n' }) : '');
+  const fileBase = () => (doc.source?.name || titleOf(plainText())).replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'Documento';
 
   function updateCount() {
-    const n = countWords(ta.value);
+    const n = countWords(plainText());
     $('#wordcount').textContent = `${n.toLocaleString('es')} ${n === 1 ? 'palabra' : 'palabras'}`;
   }
 
@@ -418,18 +480,19 @@
     }
   }
 
-  // textChanged: el texto difiere del archivo de origen
-  function dirty(textChanged = true) {
+  // contentChanged: el documento difiere del archivo de origen
+  function dirty(contentChanged = true) {
     leds[1].classList.remove('on');
-    if (doc && textChanged && doc.source) { doc.fileDirty = true; updateFileName(); }
+    if (doc && contentChanged && doc.source) { doc.fileDirty = true; updateFileName(); }
     clearTimeout(saveT);
     saveT = setTimeout(save, 700);
   }
 
   async function save() {
-    if (!doc) return;
+    if (!doc || !ed) return;
     clearTimeout(saveT);
-    doc.text = ta.value;
+    doc.html = ed.getHTML();
+    doc.text = plainText();
     doc.notes = $('#notes').value;
     doc.title = doc.source?.name && !doc.text.trim() ? doc.source.name : titleOf(doc.text);
     doc.words = countWords(doc.text);
@@ -447,19 +510,20 @@
     savedT = setTimeout(() => st.classList.remove('show'), 1600);
   }
 
-  // Guarda en el archivo vinculado (o pregunta dónde). asFormat: fuerza "Guardar como" en ese formato.
+  // Guarda en el archivo vinculado (o pregunta dónde). asFormat: "Guardar como" en ese formato. copy: no vincular.
   async function saveToFile({ asFormat = null, copy = false } = {}) {
-    if (!doc) return;
+    if (!doc || !ed) return;
     await save();
     const src = doc.source;
     const writable = src && src.path && ['docx', 'pdf', 'txt', 'md'].includes(src.format);
     const needDialog = !!asFormat || !writable;
 
-    // Advertencia al sobrescribir un Word/PDF que vino de fuera: el editor guarda solo el texto
+    // Aviso al sobrescribir un Word/PDF que vino de fuera
     if (!needDialog && src.imported && !src.overwriteOk && (src.format === 'docx' || src.format === 'pdf')) {
       const r = await api.confirm({
         message: `¿Sobrescribir «${src.name}.${src.format}»?`,
-        detail: 'El editor trabaja con texto: se conservan el tamaño de hoja y los márgenes, pero se perderán imágenes, tablas, negritas y otros estilos del archivo original.',
+        detail: 'Se conservan el texto, los títulos, las negritas, las listas, las tablas, las imágenes, la hoja y los márgenes. '
+          + 'Se pueden perder encabezados y pies de página, colores, columnas, comentarios y el control de cambios del archivo original.',
         buttons: ['Sobrescribir', 'Guardar una copia…', 'Cancelar'],
       });
       if (r === 2) return;
@@ -469,7 +533,8 @@
 
     const res = await api.saveFile({
       path: src?.path, format: asFormat || src?.format || 'docx', name: fileBase(),
-      text: ta.value, page: doc.page, font: S.font, dialog: needDialog,
+      content: { json: ed.getJSON(), html: ed.getHTML(), text: plainText() },
+      page: doc.page, font: S.font, dialog: needDialog,
     });
     if (!res) return;
     if (res.error) { toast(res.error); return; }
@@ -479,60 +544,75 @@
       updateFileName();
       await save();
     }
-    toast(`Guardado como ${FORMAT_LABEL[res.format]}: ${res.name}.${res.format}`);
+    const lost = res.lost?.length ? ` (el .txt no guarda ${res.lost.join(', ')})` : '';
+    toast(`Guardado como ${FORMAT_LABEL[res.format]}: ${res.name}.${res.format}${lost}`, lost ? 4500 : 2600);
   }
 
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+  function mountEditor(html) {
+    if (ed) ed.destroy();
+    host.innerHTML = '';
+    ed = window.RichEditor.create({
+      element: host,
+      html,
+      placeholder: 'Empieza a escribir…',
+      maxImageWidth: colPx,
+      ownScroll: () => S.typewriter,
+      onUpdate: () => { review = 0; updateCount(); dirty(true); layout(); },
+      onSelection: () => { updateToolbar(); schedule(); },
+      onError: toast,
+    });
+    ed.on('transaction', updateToolbar);
+    ed.on('focus', () => schedule(true));
+  }
 
   async function openDoc(d) {
     if (doc) await save();
     d.page = fixPage(d.page || S.pageDefault);
     doc = d;
-    ta.value = d.text || '';
+    body.classList.replace('view-library', 'view-editor');
+    mountEditor(d.html ?? textToHtml(d.text || ''));
     $('#notes').value = d.notes || '';
     updateCount();
     updateFileName();
     fillPageForm();
+    updateToolbar();
     leds[1].classList.add('on');
-    body.classList.replace('view-library', 'view-editor');
     review = 0;
-    ta.focus();
-    const end = ta.value.length;
-    ta.setSelectionRange(end, end);
+    ed.commands.focus('end');
     layout(true);
+
   }
 
-  async function newDoc({ text = '', page = null, source = null } = {}) {
+  async function newDoc({ html = '', page = null, source = null } = {}) {
     const now = Date.now();
     const d = {
-      id: newId(), title: titleOf(text), text, notes: '', created: now, updated: now, words: countWords(text),
+      id: newId(), title: 'Sin título', html, text: '', notes: '', created: now, updated: now, words: 0,
       page: fixPage({ ...S.pageDefault, ...(page || {}) }), source,
     };
     await openDoc(d);
-    if (text || source) save();
+    if (html || source) save();
   }
 
-  // Abre un archivo leído por el proceso principal ({ path, name, format, text, page } o { error })
+  // Abre un archivo leído por el proceso principal ({ path, name, format, html, page } o { error })
   async function importFile(r) {
     if (!r) return;
-    if (r.error) { toast(r.error); return; }
-    // si ya está en la biblioteca, se reutiliza
+    if (r.error) { toast(r.error, 4000); return; }
+    // si ya está en la biblioteca y no tiene cambios pendientes, se reutiliza
     if (r.path) {
       const existing = (await api.listDocs()).find((d) => d.source?.path === r.path);
       if (existing) {
         const full = await api.loadDoc(existing.id);
         if (full && !full.fileDirty) {
-          full.text = r.text;
+          full.html = r.html;
+          if (r.page) full.page = { ...full.page, ...r.page };
           return openDoc(full);
         }
       }
     }
-    await newDoc({
-      text: r.text,
-      page: r.page,
-      source: { path: r.path, name: r.name, format: r.format, imported: true },
-    });
-    if (r.format === 'doc') toast('Los .doc antiguos se abren como texto; al guardar se creará un .docx');
+    await newDoc({ html: r.html, page: r.page, source: { path: r.path, name: r.name, format: r.format, imported: true } });
+    if (r.format === 'doc') toast('Los .doc antiguos se abren solo con su texto; al guardar se creará un .docx', 4000);
     else toast(`Abierto: ${r.name}.${r.format}`);
   }
 
@@ -541,7 +621,9 @@
 
   async function showLibrary() {
     if (doc) { await save(); doc = null; }
+    if (ed) { ed.destroy(); ed = null; host.innerHTML = ''; }
     closePanels();
+    body.classList.remove('in-table');
     body.classList.replace('view-editor', 'view-library');
     const docs = await api.listDocs();
     const list = $('#doc-list');
@@ -583,20 +665,32 @@
   document.querySelectorAll('[data-export]').forEach((b) => (b.onclick = () => saveToFile({ asFormat: b.dataset.export })));
 
   // ---------------- Arrastrar y soltar archivos ----------------
+  // Las imágenes soltadas sobre el texto las inserta el editor; los documentos se abren.
   let dragDepth = 0;
-  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
-  window.addEventListener('dragenter', (e) => { if (hasFiles(e)) { dragDepth++; body.classList.add('dragging'); } });
+  const dragKind = (e) => {
+    const items = [...(e.dataTransfer?.items || [])].filter((i) => i.kind === 'file');
+    if (!items.length) return null;
+    return items.every((i) => i.type.startsWith('image/')) ? 'image' : 'doc';
+  };
+  window.addEventListener('dragenter', (e) => {
+    const k = dragKind(e);
+    if (k === 'doc' || (k === 'image' && !ed)) { dragDepth++; body.classList.add('dragging'); }
+  });
   window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; body.classList.remove('dragging'); } });
-  window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener('dragover', (e) => { if (dragKind(e)) e.preventDefault(); });
   window.addEventListener('drop', async (e) => {
-    if (!hasFiles(e)) return;
+    if (!e.dataTransfer?.files?.length) return;
     e.preventDefault();
     dragDepth = 0; body.classList.remove('dragging');
     const f = e.dataTransfer.files[0];
-    if (!f) return;
+    if (f.type.startsWith('image/')) {
+      if (ed) ed.insertImages([...e.dataTransfer.files].filter((x) => x.type.startsWith('image/')));
+      else toast('Abre o crea un documento para insertar imágenes');
+      return;
+    }
     const p = api.pathForFile(f);
     if (p) importFile(await api.readPath(p));
-    else if (/\.(txt|md)$/i.test(f.name)) importFile({ name: f.name.replace(/\.[^.]+$/, ''), format: 'txt', text: await f.text() });
+    else if (/\.(txt|md)$/i.test(f.name)) importFile({ name: f.name.replace(/\.[^.]+$/, ''), format: 'txt', html: textToHtml(await f.text()) });
     else toast('Ese formato solo se puede abrir en la app de escritorio');
   });
 
@@ -608,7 +702,7 @@
     el.classList.toggle('open', open);
     if (open && name === 'notes') $('#notes').focus();
     if (open && name === 'settings') fillPageForm();
-    if (!open) ta.focus();
+    if (!open) ed?.commands.focus();
   }
   function closePanels() { document.querySelectorAll('.panel').forEach((p) => p.classList.remove('open')); }
 
@@ -618,7 +712,7 @@
 
   // ---------------- Comandos (menú de la app y atajos) ----------------
   function command(cmd) {
-    const inEditor = body.classList.contains('view-editor');
+    const inEditor = body.classList.contains('view-editor') && doc;
     switch (cmd) {
       case 'new': return newDoc();
       case 'open': return openFile();
@@ -629,6 +723,8 @@
       case 'save-pdf': return inEditor && saveToFile({ asFormat: 'pdf', copy: true });
       case 'save-txt': return inEditor && saveToFile({ asFormat: 'txt', copy: true });
       case 'save-md': return inEditor && saveToFile({ asFormat: 'md', copy: true });
+      case 'insert-image': return inEditor && $('#image-input').click();
+      case 'insert-table': return inEditor && ed.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
       case 'toggle-typewriter': return set('typewriter', !S.typewriter);
       case 'toggle-theme': return set('theme', S.theme === 'light' ? 'dark' : 'light');
       case 'toggle-notes': return inEditor && togglePanel('notes');
@@ -638,7 +734,7 @@
   api.onMenu(command);
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { closePanels(); if (doc) ta.focus(); return; }
+    if (e.key === 'Escape') { closePanels(); ed?.commands.focus(); return; }
     if (isDesktop) return; // en Electron los atajos los gestiona el menú
     const k = e.key.toLowerCase();
     const mod = e.ctrlKey || e.metaKey;
@@ -653,13 +749,15 @@
 
   // ---------------- Aviso ----------------
   let toastT;
-  function toast(msg) {
+  function toast(msg, ms = 2600) {
     const t = $('#toast');
     t.textContent = msg;
     t.classList.add('show');
     clearTimeout(toastT);
-    toastT = setTimeout(() => t.classList.remove('show'), 2600);
+    toastT = setTimeout(() => t.classList.remove('show'), ms);
   }
+
+  window.__mde = { caretRect, layout }; // para pruebas automáticas
 
   // ---------------- Inicio ----------------
   leds[0].classList.add('on');
