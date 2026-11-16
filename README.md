@@ -13,12 +13,29 @@ Editor de texto de escritorio (Windows, macOS y Linux) hecho con Electron, con u
 El texto es **enriquecido**: títulos, negritas, cursivas, subrayado, listas, **tablas** e **imágenes**,
 sin perder la máquina de escribir (riel, carro, luz y hoja).
 
-- **Barra de formato** arriba al centro; dentro de una tabla aparece una segunda fila para añadir o
-  quitar filas y columnas, poner encabezado, combinar celdas o borrar la tabla.
+- **Formato** en **Ajustes → Formato** (negrita, cursiva, subrayado, títulos, listas, tabla, imagen).
+  Dentro de una tabla aparecen ahí los controles para añadir o quitar filas y columnas, poner
+  encabezado, combinar celdas o borrar la tabla. Selecciona el texto y pulsa el botón: el texto no pierde la selección.
 - **Imágenes**: botón de imagen (Ctrl+Shift+I), **pegar** (Ctrl+V) o **arrastrar** al texto.
   Se redimensionan desde las esquinas.
 - **Tablas**: botón de tabla (Ctrl+Alt+T); Tab pasa a la celda siguiente.
 - Al pegar texto plano se conservan las líneas en blanco y las tabulaciones.
+
+## Barra superior
+
+- **Nombre del archivo**: haz clic para cambiarlo. Si el documento ya tiene archivo, se **renombra en el disco**
+  (misma carpeta y formato; si ya existe otro con ese nombre, avisa y no toca nada). Si todavía no tiene,
+  ese nombre se propone al guardar.
+- **Autoguardado**: al activarlo, los cambios se guardan solos en el archivo mientras escribes
+  (si el documento aún no tiene archivo, primero pregunta dónde guardarlo). La biblioteca se guarda siempre.
+- Páginas y palabras, tema claro/oscuro y Ajustes.
+
+## Papel
+
+En **Ajustes → Papel** se elige el tema: **Clásico**, **Marfil**, **Sepia**, **Plano** (azul de plano de
+arquitecto, con cuadrícula), **Pizarra**, **Fósforo** (verde de terminal antigua) y **Noche**.
+El botón ☀/☾ alterna entre tu último tema claro y tu último tema oscuro. El tema solo cambia la
+pantalla: los PDF y Word se guardan siempre en blanco y negro.
 
 ## Formatos
 

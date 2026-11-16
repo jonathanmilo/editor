@@ -144,7 +144,7 @@ ipcMain.handle('docs:list', async () => {
   for (const f of files) {
     try {
       const d = JSON.parse(await fs.readFile(path.join(docsDir(), f), 'utf8'));
-      docs.push({ id: d.id, title: d.title, updated: d.updated, words: d.words, preview: (d.text || '').slice(0, 200) });
+      docs.push({ id: d.id, title: d.title, updated: d.updated, words: d.words, source: d.source || null, preview: (d.text || '').slice(0, 200) });
     } catch { /* archivo dañado: se ignora */ }
   }
   return docs.sort((a, b) => b.updated - a.updated);
@@ -239,10 +239,35 @@ ipcMain.handle('file:confirm', async (_e, { message, detail, buttons }) => {
 
 ipcMain.handle('file:reveal', (_e, p) => shell.showItemInFolder(p));
 
-ipcMain.on('theme', (_e, theme) => {
-  if (win && !isMac && TITLEBAR[theme]) {
-    try { win.setTitleBarOverlay({ ...TITLEBAR[theme], height: 36 }); } catch { /* plataforma sin overlay */ }
-    win.setBackgroundColor(TITLEBAR[theme].color);
+// Colores de la barra de la ventana según el tema de papel: { color, symbolColor }
+const HEX = /^#[0-9a-f]{6}$/i;
+ipcMain.on('theme', (_e, t) => {
+  const colors = typeof t === 'string' ? TITLEBAR[t] : t;
+  if (!win || !colors || !HEX.test(colors.color) || !HEX.test(colors.symbolColor)) return;
+  if (!isMac) { try { win.setTitleBarOverlay({ ...colors, height: 36 }); } catch { /* plataforma sin overlay */ } }
+  win.setBackgroundColor(colors.color);
+});
+
+// Renombrar el archivo vinculado en disco (misma carpeta y extensión)
+ipcMain.handle('file:rename', async (_e, { path: from, name }) => {
+  const clean = String(name || '').replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim().replace(/[. ]+$/, '');
+  if (!clean) return { error: 'El nombre no es válido' };
+  const to = path.join(path.dirname(from), clean + path.extname(from));
+  if (to === from) return { path: to, name: clean };
+  try {
+    await fs.access(from);
+  } catch {
+    return { path: to, name: clean, missing: true }; // el archivo aún no existe: se usará el nombre nuevo al guardar
+  }
+  try {
+    await fs.access(to);
+    return { error: `Ya existe «${path.basename(to)}» en esa carpeta` };
+  } catch { /* no existe: se puede renombrar */ }
+  try {
+    await fs.rename(from, to);
+    return { path: to, name: clean };
+  } catch (err) {
+    return { error: `No se pudo renombrar: ${err.message}` };
   }
 });
 

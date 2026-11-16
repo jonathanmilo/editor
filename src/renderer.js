@@ -84,23 +84,60 @@
 
   // ---------------- Ajustes ----------------
   const DEFAULTS = {
-    theme: 'light', typewriter: true, font: 'Courier Prime',
+    theme: 'clasico', lastLight: 'clasico', lastDark: 'noche', typewriter: true, font: 'Courier Prime',
     zoom: 130, rail: 77, light: 100, sound: true, fade: true, strict: false, showSheet: false,
     pageDefault: PAGE_DEFAULT,
   };
   let S = { ...DEFAULTS };
   try { Object.assign(S, JSON.parse(localStorage.getItem('mde:settings')) || {}); } catch { /* valores por defecto */ }
+  S.theme = { light: 'clasico', dark: 'noche' }[S.theme] || S.theme; // nombres de la versión anterior
   if (S.font.includes(',')) S.font = S.font.split(',')[0].replace(/'/g, '').trim(); // ajustes de la primera versión
   S.pageDefault = fixPage(S.pageDefault);
   const saveSettings = () => { try { localStorage.setItem('mde:settings', JSON.stringify(S)); } catch { /* ignorar */ } };
+
+  // Temas de papel: [id, nombre, oscuro, fondo, tinta, riel]
+  const THEMES = [
+    ['clasico', 'Clásico', false, '#8c827d', '#161311', '#1d1b1a'],
+    ['marfil', 'Marfil', false, '#e7e0d1', '#1d1a16', '#2a2622'],
+    ['sepia', 'Sepia', false, '#b59a74', '#2e1d0e', '#2b1a0c'],
+    ['plano', 'Plano', true, '#1d4f91', '#eef5ff', '#0e2a50'],
+    ['pizarra', 'Pizarra', true, '#2f4237', '#eef2e6', '#7a5a3b'],
+    ['fosforo', 'Fósforo', true, '#0b100c', '#5dff8f', '#1f4a2b'],
+    ['noche', 'Noche', true, '#1c1917', '#efe6d8', '#3a3532'],
+  ];
+  const themeOf = (id) => THEMES.find((t) => t[0] === id) || THEMES[0];
+  if (!THEMES.some((t) => t[0] === S.theme)) S.theme = 'clasico';
+
+  const themesEl = $('#themes');
+  for (const [id, name, , bg, ink, rail] of THEMES) {
+    const b = document.createElement('button');
+    b.className = 'theme-sw';
+    b.dataset.theme = id;
+    b.title = name;
+    b.innerHTML = `<span class="pv" style="background:${bg};color:${ink};--sw-rail:${rail}">Aa</span><span class="nm">${name}</span>`;
+    if (id === 'plano') b.querySelector('.pv').style.backgroundImage =
+      'linear-gradient(rgba(255,255,255,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.18) 1px, transparent 1px)';
+    if (id === 'plano') b.querySelector('.pv').style.backgroundSize = '8px 8px';
+    if (id === 'fosforo') b.querySelector('.pv').style.textShadow = '0 0 5px rgba(93,255,143,.7)';
+    b.addEventListener('mousedown', (e) => e.preventDefault());
+    b.onclick = () => setTheme(id);
+    themesEl.appendChild(b);
+  }
+  function setTheme(id) {
+    S[themeOf(id)[2] ? 'lastDark' : 'lastLight'] = id;
+    set('theme', id);
+  }
+  const toggleLightDark = () => setTheme(themeOf(S.theme)[2] ? S.lastLight : S.lastDark);
 
   let doc = null;
   let ed = null; // editor enriquecido del documento abierto
   const P = () => (doc ? doc.page : S.pageDefault);
 
   function applySettings() {
-    body.classList.toggle('theme-light', S.theme === 'light');
-    body.classList.toggle('theme-dark', S.theme === 'dark');
+    const th = themeOf(S.theme);
+    body.dataset.theme = th[0];
+    body.classList.toggle('is-dark', th[2]);
+    document.querySelectorAll('.theme-sw').forEach((b) => b.classList.toggle('on', b.dataset.theme === th[0]));
     body.classList.toggle('typewriter', S.typewriter);
     body.classList.toggle('fade-far', S.fade);
     body.classList.toggle('show-sheet', S.showSheet);
@@ -116,7 +153,7 @@
     $('#s-fade').checked = S.fade;
     $('#s-strict').checked = S.strict;
     $('#s-sheet').checked = S.showSheet;
-    api.setTheme(S.theme);
+    api.setTheme({ color: th[3], symbolColor: th[4] });
     fillPageForm();
     layout(true);
   }
@@ -132,7 +169,7 @@
   $('#s-strict').onchange = (e) => set('strict', e.target.checked);
   $('#s-sheet').onchange = (e) => set('showSheet', e.target.checked);
   $('#tw-switch').onchange = (e) => { set('typewriter', e.target.checked); ed?.commands.focus(); };
-  $('#theme-btn').onclick = () => set('theme', S.theme === 'light' ? 'dark' : 'light');
+  $('#theme-btn').onclick = toggleLightDark;
 
   // ----- Formulario de la hoja -----
   const fmtNum = (n) => String(Math.round(n * 100) / 100);
@@ -461,29 +498,105 @@
   const countWords = (t) => (t.match(/[\p{L}\p{N}][\p{L}\p{N}'’\-]*/gu) || []).length;
   const titleOf = (t) => (t.split('\n').find((l) => l.trim()) || 'Sin título').trim().slice(0, 70);
   const plainText = () => (ed ? ed.getText({ blockSeparator: '\n' }) : '');
-  const fileBase = () => (doc.source?.name || titleOf(plainText())).replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || 'Documento';
+  const cleanName = (n) => String(n || '').replace(/[\\/:*?"<>|\x00-\x1f]/g, '').trim().replace(/[. ]+$/, '').slice(0, 120);
+  // Nombre del documento: el del archivo vinculado, el que escribió el usuario o la primera línea
+  const docName = () => doc.source?.name || doc.name || '';
+  const fileBase = () => cleanName(docName() || titleOf(plainText())) || 'Documento';
 
   function updateCount() {
     const n = countWords(plainText());
     $('#wordcount').textContent = `${n.toLocaleString('es')} ${n === 1 ? 'palabra' : 'palabras'}`;
   }
 
+  // ----- Nombre de archivo editable -----
+  const nameInput = $('#file-name');
   function updateFileName() {
-    const el = $('#file-name');
-    if (doc?.source?.path || doc?.source?.name) {
-      const ext = doc.source.format;
-      el.textContent = `${doc.source.name}.${ext}`;
-      el.title = `${FORMAT_LABEL[ext] || ext}${doc.source.path ? ' · ' + doc.source.path : ''}${doc.fileDirty ? ' · cambios sin guardar en el archivo' : ''}`;
-      el.classList.toggle('unsaved', !!doc.fileDirty);
+    if (!doc) return;
+    const chip = $('#file-chip');
+    if (document.activeElement !== nameInput) nameInput.value = docName();
+    nameInput.placeholder = titleOf(plainText());
+    nameInput.style.width = Math.max(4, Math.min(40, (nameInput.value || nameInput.placeholder).length + 1)) + 'ch';
+    const ext = doc.source?.format;
+    $('#file-ext').textContent = ext ? '.' + ext : '';
+    chip.classList.toggle('unsaved', !!doc.fileDirty);
+    chip.title = doc.source?.path
+      ? `${FORMAT_LABEL[ext] || ext} · ${doc.source.path}${doc.fileDirty ? '\nHay cambios sin guardar en el archivo' : ''}\nHaz clic para cambiar el nombre`
+      : 'Nombre del documento: se usará al guardarlo. Haz clic para cambiarlo';
+    updateAutosave();
+  }
+
+  async function commitName() {
+    if (!doc) return;
+    const wanted = cleanName(nameInput.value);
+    if (wanted === docName()) { updateFileName(); return; }
+    if (!wanted) { // vacío: vuelve al nombre automático (solo si no hay archivo)
+      if (!doc.source?.path) doc.name = '';
+      updateFileName(); dirty(false); return;
+    }
+    if (doc.source?.path && api.renameFile) {
+      const r = await api.renameFile({ path: doc.source.path, name: wanted });
+      if (r.error) { toast(r.error, 3500); updateFileName(); return; }
+      doc.source.path = r.path;
+      doc.source.name = r.name;
+      if (!r.missing) toast(`Archivo renombrado: ${r.name}.${doc.source.format}`);
+    } else if (doc.source) {
+      doc.source.name = wanted;
     } else {
-      el.textContent = '';
+      doc.name = wanted;
+    }
+    updateFileName();
+    save();
+  }
+  nameInput.addEventListener('input', () => { nameInput.style.width = Math.max(4, Math.min(40, nameInput.value.length + 1)) + 'ch'; });
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); nameInput.blur(); }
+    if (e.key === 'Escape') { e.preventDefault(); nameInput.value = docName(); nameInput.blur(); }
+    e.stopPropagation();
+  });
+  nameInput.addEventListener('blur', () => { commitName(); ed?.commands.focus(); });
+
+  // ----- Autoguardado en el archivo -----
+  const autoBox = $('#autosave');
+  let autoT = null, autoBusy = false, autoAgain = false;
+  function updateAutosave() {
+    const on = !!doc?.autosave;
+    autoBox.checked = on;
+    $('#autosave-label').title = on && doc.source?.path
+      ? `Autoguardado activado: los cambios se guardan solos en ${doc.source.name}.${doc.source.format}`
+      : 'Guarda automáticamente en el archivo mientras escribes (la biblioteca se guarda siempre)';
+  }
+  async function runAutosave() {
+    if (!doc?.autosave || !doc.fileDirty) return;
+    if (autoBusy) { autoAgain = true; return; }
+    autoBusy = true;
+    $('#autosave-label').classList.add('saving');
+    try { await saveToFile({ quiet: true }); } finally {
+      autoBusy = false;
+      $('#autosave-label').classList.remove('saving');
+      if (autoAgain) { autoAgain = false; scheduleAutosave(); }
     }
   }
+  function scheduleAutosave() {
+    if (!doc?.autosave) return;
+    clearTimeout(autoT);
+    autoT = setTimeout(runAutosave, doc.source?.format === 'pdf' ? 4000 : 1500);
+  }
+  autoBox.addEventListener('change', async () => {
+    if (!doc) { autoBox.checked = false; return; }
+    if (!autoBox.checked) { doc.autosave = false; updateAutosave(); save(); ed?.commands.focus(); return; }
+    // para activarlo hace falta un archivo: se guarda ahora (pide dónde si todavía no existe)
+    const ok = await saveToFile();
+    doc.autosave = !!ok;
+    updateAutosave();
+    if (ok) { save(); toast(`Autoguardado activado en ${doc.source.name}.${doc.source.format}`); }
+    ed?.commands.focus();
+  });
 
   // contentChanged: el documento difiere del archivo de origen
   function dirty(contentChanged = true) {
     leds[1].classList.remove('on');
-    if (doc && contentChanged && doc.source) { doc.fileDirty = true; updateFileName(); }
+    if (doc && contentChanged && doc.source) { doc.fileDirty = true; updateFileName(); scheduleAutosave(); }
+    else if (doc && !docName()) updateFileName(); // el nombre automático sigue a la primera línea
     clearTimeout(saveT);
     saveT = setTimeout(save, 700);
   }
@@ -494,7 +607,7 @@
     doc.html = ed.getHTML();
     doc.text = plainText();
     doc.notes = $('#notes').value;
-    doc.title = doc.source?.name && !doc.text.trim() ? doc.source.name : titleOf(doc.text);
+    doc.title = docName() || titleOf(doc.text);
     doc.words = countWords(doc.text);
     doc.updated = Date.now();
     await api.saveDoc(doc);
@@ -510,13 +623,15 @@
     savedT = setTimeout(() => st.classList.remove('show'), 1600);
   }
 
-  // Guarda en el archivo vinculado (o pregunta dónde). asFormat: "Guardar como" en ese formato. copy: no vincular.
-  async function saveToFile({ asFormat = null, copy = false } = {}) {
-    if (!doc || !ed) return;
+  // Guarda en el archivo vinculado (o pregunta dónde). asFormat: "Guardar como" en ese formato.
+  // copy: no vincular. quiet: sin avisos (autoguardado). Devuelve true si se guardó.
+  async function saveToFile({ asFormat = null, copy = false, quiet = false } = {}) {
+    if (!doc || !ed) return false;
     await save();
     const src = doc.source;
     const writable = src && src.path && ['docx', 'pdf', 'txt', 'md'].includes(src.format);
     const needDialog = !!asFormat || !writable;
+    if (quiet && needDialog) return false;
 
     // Aviso al sobrescribir un Word/PDF que vino de fuera
     if (!needDialog && src.imported && !src.overwriteOk && (src.format === 'docx' || src.format === 'pdf')) {
@@ -526,7 +641,7 @@
           + 'Se pueden perder encabezados y pies de página, colores, columnas, comentarios y el control de cambios del archivo original.',
         buttons: ['Sobrescribir', 'Guardar una copia…', 'Cancelar'],
       });
-      if (r === 2) return;
+      if (r === 2) return false;
       if (r === 1) return saveToFile({ asFormat: src.format });
       src.overwriteOk = true;
     }
@@ -536,16 +651,19 @@
       content: { json: ed.getJSON(), html: ed.getHTML(), text: plainText() },
       page: doc.page, font: S.font, dialog: needDialog,
     });
-    if (!res) return;
-    if (res.error) { toast(res.error); return; }
+    if (!res) return false;
+    if (res.error) { toast(res.error); if (quiet) { doc.autosave = false; updateAutosave(); } return false; }
     if (!copy) {
       doc.source = { path: res.path, name: res.name, format: res.format, imported: false };
+      doc.name = '';
       doc.fileDirty = false;
       updateFileName();
       await save();
     }
+    if (quiet) { flash(`Guardado en ${res.name}.${res.format}`); return true; }
     const lost = res.lost?.length ? ` (el .txt no guarda ${res.lost.join(', ')})` : '';
     toast(`Guardado como ${FORMAT_LABEL[res.format]}: ${res.name}.${res.format}${lost}`, lost ? 4500 : 2600);
+    return true;
   }
 
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -568,7 +686,8 @@
   }
 
   async function openDoc(d) {
-    if (doc) await save();
+    if (doc) { await runAutosave(); await save(); }
+    clearTimeout(autoT);
     d.page = fixPage(d.page || S.pageDefault);
     doc = d;
     body.classList.replace('view-library', 'view-editor');
@@ -620,7 +739,7 @@
   api.onOpenPath(async (p) => importFile(await api.readPath(p)));
 
   async function showLibrary() {
-    if (doc) { await save(); doc = null; }
+    if (doc) { clearTimeout(autoT); await runAutosave(); await save(); doc = null; }
     if (ed) { ed.destroy(); ed = null; host.innerHTML = ''; }
     closePanels();
     body.classList.remove('in-table');
@@ -702,12 +821,13 @@
     el.classList.toggle('open', open);
     if (open && name === 'notes') $('#notes').focus();
     if (open && name === 'settings') fillPageForm();
-    if (!open) ed?.commands.focus();
+    if (!open || name === 'settings') ed?.commands.focus();
   }
   function closePanels() { document.querySelectorAll('.panel').forEach((p) => p.classList.remove('open')); }
 
   $('#notes-btn').onclick = () => togglePanel('notes');
   $('#settings-btn').onclick = () => togglePanel('settings');
+  $('#settings-btn').addEventListener('mousedown', (e) => e.preventDefault()); // el texto conserva el foco y la selección
   document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => togglePanel(b.dataset.close, false)));
 
   // ---------------- Comandos (menú de la app y atajos) ----------------
@@ -726,7 +846,7 @@
       case 'insert-image': return inEditor && $('#image-input').click();
       case 'insert-table': return inEditor && ed.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
       case 'toggle-typewriter': return set('typewriter', !S.typewriter);
-      case 'toggle-theme': return set('theme', S.theme === 'light' ? 'dark' : 'light');
+      case 'toggle-theme': return toggleLightDark();
       case 'toggle-notes': return inEditor && togglePanel('notes');
       case 'toggle-settings': return inEditor && togglePanel('settings');
     }
