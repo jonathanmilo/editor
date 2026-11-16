@@ -25,10 +25,10 @@
       </header>
       <div class="lib-actions">
         <button class="btn primary" id="lib-new">Nuevo documento</button>
-        <button class="btn" id="lib-open">Abrir archivo…</button>
+        <button class="btn" id="lib-open">Abrir Word, PDF o texto…</button>
       </div>
       <ul id="doc-list"></ul>
-      <p id="lib-empty" hidden>Todavía no hay documentos. Empieza uno nuevo.</p>
+      <p id="lib-empty" hidden>Todavía no hay documentos. Empieza uno nuevo o arrastra aquí un archivo .docx, .pdf o .txt.</p>
     </div>
   </section>
 
@@ -42,12 +42,21 @@
     <!-- papel / texto -->
     <div id="paper">
       <div id="page">
-        <textarea id="text" spellcheck="true" autocomplete="off" placeholder="Empieza a escribir…"></textarea>
+        <div id="sheet">
+          <div id="col">
+            <textarea id="text" spellcheck="true" autocomplete="off" placeholder="Empieza a escribir…"></textarea>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- riel y carro -->
     <div id="rail" aria-hidden="true"><span class="cap l"></span><span class="cap r"></span></div>
+    <div id="stops">
+      <div class="stop" id="stop-l" title="Margen izquierdo: arrastra para ajustar"></div>
+      <div class="stop" id="stop-r" title="Margen derecho: arrastra para ajustar"></div>
+      <div id="stop-tip"></div>
+    </div>
     <div id="carriage" aria-hidden="true">
       <div class="typebar"></div>
       <div class="body"><i></i><i></i><i></i></div>
@@ -64,8 +73,10 @@
         <span class="switch"></span>
         <span class="tw-state" id="tw-state">Activada</span>
       </label>
+      <span id="file-name" title=""></span>
       <span class="save-state" id="save-state"></span>
       <div class="spacer"></div>
+      <span id="pagecount"></span>
       <span id="wordcount">0 palabras</span>
       <button class="icon" id="theme-btn" title="Tema (Ctrl+Shift+L)" aria-label="Cambiar tema">
         <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -99,22 +110,73 @@
           <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
+      <h3>Hoja</h3>
       <div class="field">
-        <label for="s-font">Tipografía</label>
-        <select id="s-font">
-          <option value="'Courier Prime', 'Courier New', monospace">Courier Prime</option>
-          <option value="'IBM Plex Mono', 'Consolas', monospace">IBM Plex Mono</option>
-          <option value="'Courier New', Courier, monospace">Courier New</option>
-          <option value="Consolas, 'Cascadia Mono', monospace">Consolas</option>
+        <label for="p-preset">Formato</label>
+        <select id="p-preset">
+          <option value="carta">Carta (21,59 × 27,94 cm)</option>
+          <option value="a4">A4 (21 × 29,7 cm)</option>
+          <option value="oficio">Oficio (21,59 × 33,02 cm)</option>
+          <option value="legal">Legal (21,59 × 35,56 cm)</option>
+          <option value="a5">A5 (14,8 × 21 cm)</option>
+          <option value="b5">B5 (17,6 × 25 cm)</option>
+          <option value="custom">Personalizado</option>
         </select>
       </div>
       <div class="field">
-        <label for="s-size">Tamaño de letra <output id="o-size"></output></label>
-        <input type="range" id="s-size" min="14" max="34" step="1" />
+        <label>Orientación</label>
+        <div class="seg" id="p-orient">
+          <button data-v="portrait" class="on">Vertical</button>
+          <button data-v="landscape">Horizontal</button>
+        </div>
+      </div>
+      <div class="field grid2">
+        <label>Ancho <span class="num"><input type="number" id="p-width" min="5" max="60" step="0.1" /> cm</span></label>
+        <label>Alto <span class="num"><input type="number" id="p-height" min="5" max="100" step="0.1" /> cm</span></label>
       </div>
       <div class="field">
-        <label for="s-width">Ancho de línea <output id="o-width"></output></label>
-        <input type="range" id="s-width" min="36" max="100" step="2" />
+        <label>Márgenes</label>
+        <div class="margins">
+          <label>Superior <span class="num"><input type="number" id="p-top" min="0" max="15" step="0.1" /> cm</span></label>
+          <label>Inferior <span class="num"><input type="number" id="p-bottom" min="0" max="15" step="0.1" /> cm</span></label>
+          <label>Izquierdo <span class="num"><input type="number" id="p-left" min="0" max="15" step="0.1" /> cm</span></label>
+          <label>Derecho <span class="num"><input type="number" id="p-right" min="0" max="15" step="0.1" /> cm</span></label>
+        </div>
+      </div>
+      <div class="field grid2">
+        <label>Letra <span class="num"><input type="number" id="p-size" min="6" max="36" step="0.5" /> pt</span></label>
+        <label>Interlineado
+          <select id="p-spacing">
+            <option value="1">Sencillo</option>
+            <option value="1.15">1,15</option>
+            <option value="1.5">1,5</option>
+            <option value="2">Doble</option>
+          </select>
+        </label>
+      </div>
+      <p class="readout" id="p-readout"></p>
+      <div class="field check">
+        <label><input type="checkbox" id="s-sheet" /> Mostrar la hoja</label>
+      </div>
+      <div class="row">
+        <button class="btn small" id="p-make-default" title="Los documentos nuevos usarán esta hoja">Usar como predeterminada</button>
+        <button class="btn small" id="p-reset" title="Aplicar la hoja predeterminada a este documento">Restablecer</button>
+      </div>
+
+      <div class="panel-sep"></div>
+      <h3>Pantalla</h3>
+      <div class="field">
+        <label for="s-font">Tipografía</label>
+        <select id="s-font">
+          <option value="Courier Prime">Courier Prime</option>
+          <option value="IBM Plex Mono">IBM Plex Mono</option>
+          <option value="Courier New">Courier New</option>
+          <option value="Consolas">Consolas</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="s-zoom">Zoom <output id="o-zoom"></output></label>
+        <input type="range" id="s-zoom" min="50" max="200" step="5" />
       </div>
       <div class="field">
         <label for="s-rail">Altura del riel <output id="o-rail"></output></label>
@@ -135,18 +197,21 @@
       </div>
       <div class="panel-sep"></div>
       <div class="field">
-        <label>Exportar</label>
+        <label>Guardar como</label>
         <div class="row">
           <button class="btn small" data-export="docx">Word</button>
+          <button class="btn small" data-export="pdf">PDF</button>
           <button class="btn small" data-export="txt">.txt</button>
           <button class="btn small" data-export="md">.md</button>
         </div>
       </div>
-      <p class="hint">Ctrl+S guarda · Ctrl+E exporta a Word · rueda del ratón para releer</p>
+      <p class="hint">Ctrl+S guarda · Ctrl+Shift+S guarda como · arrastra los topes del riel para cambiar los márgenes · rueda del ratón para releer</p>
     </aside>
 
-    <div id="toast" role="status"></div>
   </section>
+
+  <div id="toast" role="status"></div>
+  <div id="drop-hint">Suelta el archivo para abrirlo</div>
 
   <script src="sound.js"></script>
   <script src="renderer.js"></script>

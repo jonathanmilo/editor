@@ -77,13 +77,20 @@ function buildMenu() {
       label: 'Archivo',
       submenu: [
         { label: 'Nuevo documento', accelerator: 'CmdOrCtrl+N', click: () => send('new') },
-        { label: 'Abrir archivo…', accelerator: 'CmdOrCtrl+O', click: () => send('open') },
+        { label: 'Abrir archivo (Word, PDF, texto)…', accelerator: 'CmdOrCtrl+O', click: () => send('open') },
         { label: 'Biblioteca', accelerator: 'CmdOrCtrl+L', click: () => send('library') },
         { type: 'separator' },
         { label: 'Guardar', accelerator: 'CmdOrCtrl+S', click: () => send('save') },
-        { label: 'Exportar a Word (.docx)…', accelerator: 'CmdOrCtrl+E', click: () => send('export-docx') },
-        { label: 'Exportar a texto (.txt)…', click: () => send('export-txt') },
-        { label: 'Exportar a Markdown (.md)…', click: () => send('export-md') },
+        { label: 'Guardar como…', accelerator: 'CmdOrCtrl+Shift+S', click: () => send('save-as') },
+        {
+          label: 'Guardar una copia como',
+          submenu: [
+            { label: 'Word (.docx)…', click: () => send('save-docx') },
+            { label: 'PDF (.pdf)…', accelerator: 'CmdOrCtrl+P', click: () => send('save-pdf') },
+            { label: 'Texto (.txt)…', click: () => send('save-txt') },
+            { label: 'Markdown (.md)…', click: () => send('save-md') },
+          ],
+        },
         { type: 'separator' },
         isMac ? { role: 'close', label: 'Cerrar' } : { role: 'quit', label: 'Salir' },
       ],
@@ -158,46 +165,69 @@ ipcMain.handle('docs:delete', async (_e, id) => {
   return true;
 });
 
-// ---------- Abrir / exportar archivos ----------
+// ---------- Abrir / guardar archivos (Word, PDF, texto) ----------
+const formats = require('./lib/formats');
+
+const OPEN_FILTERS = [
+  { name: 'Documentos compatibles', extensions: ['docx', 'doc', 'pdf', 'txt', 'md'] },
+  { name: 'Word', extensions: ['docx', 'doc'] },
+  { name: 'PDF', extensions: ['pdf'] },
+  { name: 'Texto', extensions: ['txt', 'md', 'text'] },
+];
+const SAVE_FILTERS = {
+  docx: { name: 'Documento de Word (.docx)', extensions: ['docx'] },
+  pdf: { name: 'PDF (.pdf)', extensions: ['pdf'] },
+  txt: { name: 'Texto (.txt)', extensions: ['txt'] },
+  md: { name: 'Markdown (.md)', extensions: ['md'] },
+};
+
+async function readForRenderer(p) {
+  try {
+    return await formats.readFile(p);
+  } catch (err) {
+    return { error: `No se pudo leer «${path.basename(p)}»: ${err.message}` };
+  }
+}
+
 ipcMain.handle('file:open', async () => {
-  const r = await dialog.showOpenDialog(win, {
-    title: 'Abrir archivo',
-    properties: ['openFile'],
-    filters: [{ name: 'Texto', extensions: ['txt', 'md', 'markdown', 'text'] }],
-  });
+  const r = await dialog.showOpenDialog(win, { title: 'Abrir archivo', properties: ['openFile'], filters: OPEN_FILTERS });
   if (r.canceled || !r.filePaths[0]) return null;
-  const p = r.filePaths[0];
-  return { name: path.basename(p, path.extname(p)), text: await fs.readFile(p, 'utf8') };
+  return readForRenderer(r.filePaths[0]);
 });
 
-ipcMain.handle('file:export', async (_e, { format, name, text, settings }) => {
-  const ext = { docx: 'docx', txt: 'txt', md: 'md' }[format];
-  const r = await dialog.showSaveDialog(win, {
-    title: 'Exportar',
-    defaultPath: path.join(app.getPath('documents'), `${name || 'Documento'}.${ext}`),
-    filters: [{ name: ext.toUpperCase(), extensions: [ext] }],
-  });
-  if (r.canceled || !r.filePath) return null;
+ipcMain.handle('file:read', (_e, p) => readForRenderer(p));
 
-  if (format === 'docx') {
-    const { Document, Packer, Paragraph, TextRun } = require('docx');
-    const font = settings?.docxFont || 'Courier New';
-    const doc = new Document({
-      creator: 'Máquina de escribir',
-      title: name,
-      styles: { default: { document: { run: { font, size: 24 } } } },
-      sections: [{
-        children: text.split('\n').map((line) => new Paragraph({
-          spacing: { after: 0, line: 360 },
-          children: [new TextRun({ text: line, font })],
-        })),
-      }],
+// opts: { path?, format?, name, text, page, font, dialog }
+ipcMain.handle('file:save', async (_e, opts) => {
+  let target = opts.path;
+  let format = opts.format;
+  if (opts.dialog || !target || !formats.WRITABLE.includes(format)) {
+    const first = formats.WRITABLE.includes(format) ? format : 'docx';
+    const order = [first, ...formats.WRITABLE.filter((f) => f !== first)];
+    const r = await dialog.showSaveDialog(win, {
+      title: 'Guardar como',
+      defaultPath: path.join(target ? path.dirname(target) : app.getPath('documents'), `${opts.name || 'Documento'}.${first}`),
+      filters: order.map((f) => SAVE_FILTERS[f]),
     });
-    await fs.writeFile(r.filePath, await Packer.toBuffer(doc));
-  } else {
-    await fs.writeFile(r.filePath, text, 'utf8');
+    if (r.canceled || !r.filePath) return null;
+    target = r.filePath;
+    format = formats.extOf(target);
+    if (!formats.WRITABLE.includes(format)) { format = first; target += '.' + first; }
   }
-  return r.filePath;
+  try {
+    await formats.writeFile(target, format, opts.text, opts.page, opts.font, __dirname, () => new BrowserWindow({
+      show: false, webPreferences: { javascript: true, contextIsolation: true },
+    }));
+    app.addRecentDocument(target);
+    return { path: target, format, name: path.basename(target, path.extname(target)) };
+  } catch (err) {
+    return { error: `No se pudo guardar: ${err.message}` };
+  }
+});
+
+ipcMain.handle('file:confirm', async (_e, { message, detail, buttons }) => {
+  const r = await dialog.showMessageBox(win, { type: 'question', message, detail, buttons, defaultId: 0, cancelId: buttons.length - 1, noLink: true });
+  return r.response;
 });
 
 ipcMain.handle('file:reveal', (_e, p) => shell.showItemInFolder(p));
@@ -209,9 +239,27 @@ ipcMain.on('theme', (_e, theme) => {
   }
 });
 
+// Archivos pasados al ejecutar ("Abrir con…" o doble clic en un archivo asociado)
+const fileFromArgs = (argv) => argv.slice(1).find((a) => !a.startsWith('-') && formats.READABLE.includes(formats.extOf(a)) && require('fs').existsSync(a));
+let pendingPath = fileFromArgs(process.argv);
+
+function openPath(p) {
+  if (!p || !win) return;
+  if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => win.webContents.send('open-path', p));
+  else win.webContents.send('open-path', p);
+}
+
+if (!app.requestSingleInstanceLock()) app.quit();
+app.on('second-instance', (_e, argv) => {
+  if (win) { if (win.isMinimized()) win.restore(); win.focus(); }
+  openPath(fileFromArgs(argv));
+});
+app.on('open-file', (e, p) => { e.preventDefault(); if (win) openPath(p); else pendingPath = p; });
+
 app.whenReady().then(() => {
   buildMenu();
   createWindow();
+  openPath(pendingPath);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

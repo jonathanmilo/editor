@@ -1,5 +1,5 @@
 // Puente seguro entre la interfaz y el proceso principal.
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
@@ -8,8 +8,12 @@ contextBridge.exposeInMainWorld('api', {
   saveDoc: (doc) => ipcRenderer.invoke('docs:save', doc),
   deleteDoc: (id) => ipcRenderer.invoke('docs:delete', id),
   openFile: () => ipcRenderer.invoke('file:open'),
-  exportFile: (opts) => ipcRenderer.invoke('file:export', opts),
+  readPath: (p) => ipcRenderer.invoke('file:read', p),
+  saveFile: (opts) => ipcRenderer.invoke('file:save', opts),
+  confirm: (opts) => ipcRenderer.invoke('file:confirm', opts),
+  pathForFile: (file) => webUtils.getPathForFile(file),
   reveal: (p) => ipcRenderer.invoke('file:reveal', p),
   setTheme: (t) => ipcRenderer.send('theme', t),
   onMenu: (cb) => ipcRenderer.on('menu', (_e, cmd) => cb(cmd)),
+  onOpenPath: (cb) => ipcRenderer.on('open-path', (_e, p) => cb(p)),
 });
