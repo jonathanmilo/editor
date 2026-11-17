@@ -105,7 +105,7 @@
     ['fosforo', 'Fósforo', true, '#0b100c', '#5dff8f', '#1f4a2b'],
     ['noche', 'Noche', true, '#1c1917', '#efe6d8', '#3a3532'],
     ['collage', 'Collage', false, '#b48a58', '#1b140c', '#241a10'],
-    ['collage-bn', 'Collage B/N', false, '#9b9893', '#111111', '#121212'],
+    ['collage-bn', 'Collage B/N', false, '#b4afa6', '#111111', '#121212'],
     ['fotocopia', 'Fotocopia', false, '#e9e8e2', '#0d0d0d', '#151515'],
   ];
   // temas que visten cada palabra (recortes o tóner irregular)
@@ -131,7 +131,7 @@
       b.querySelector('.pv').innerHTML =
         `<i style="font:400 14px 'Archivo Black';background:${color ? '#4767b6' : '#111'};color:#fff;padding:0 3px;transform:rotate(-4deg)">A</i>` +
         `<i style="font:400 16px 'Abril Fatface';background:#fff;color:#111;padding:0 3px;transform:rotate(3deg)">a</i>`;
-      b.querySelector('.pv').style.cssText += ';display:flex;gap:2px;align-items:center;justify-content:center;background-image:var(--tx-kraft)';
+      b.querySelector('.pv').style.cssText += `;display:flex;gap:2px;align-items:center;justify-content:center;background-image:var(${color ? '--tx-trama-cafe' : '--tx-trama-gris'});background-size:300px`;
       b.querySelectorAll('.pv i').forEach((i) => { i.style.display = 'inline-block'; i.style.fontStyle = 'normal'; i.style.boxShadow = '0 1px 1px rgba(0,0,0,.35)'; });
     }
     if (id === 'fotocopia') {
@@ -1017,6 +1017,27 @@
   }
 
   window.__mde = { caretRect, layout }; // para pruebas automáticas
+
+  // Las texturas con filtros SVG (trama de semitono) se dibujan una sola vez como imagen:
+  // así el navegador no recalcula el filtro en cada repintado mientras se escribe.
+  function bakeTextures() {
+    const css = getComputedStyle(root);
+    for (const name of ['--tx-trama-cafe', '--tx-trama-gris']) {
+      const m = /url\("(data:image\/svg\+xml[^"]+)"\)/.exec(css.getPropertyValue(name));
+      if (!m) continue;
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas');
+          c.width = img.naturalWidth || 900; c.height = img.naturalHeight || 900;
+          c.getContext('2d').drawImage(img, 0, 0);
+          c.toBlob((blob) => { if (blob) root.style.setProperty(name, `url("${URL.createObjectURL(blob)}")`); }, 'image/png');
+        } catch { /* se queda la versión SVG */ }
+      };
+      img.src = m[1];
+    }
+  }
+  bakeTextures();
 
   // ---------------- Inicio ----------------
   leds[0].classList.add('on');

@@ -11,6 +11,9 @@
   /* motas de tóner: ruido fino umbralizado */
   --tx-toner: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='t'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='discrete' tableValues='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 .9 1'/></feComponentTransfer><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23t)'/></svg>");
   --tx-grano: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='turbulence' baseFrequency='1.6' numOctaves='1' seed='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -.35 .2'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+  /* trama de semitono sobre papel arrugado y manchado (puntos que crecen en pliegues y manchas) */
+  --tx-trama-cafe: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900'><defs><radialGradient id='g'><stop offset='0' stop-color='%23000'/><stop offset='1' stop-color='%23fff'/></radialGradient><pattern id='p' width='12' height='12' patternUnits='userSpaceOnUse'><rect width='12' height='12' fill='%23fff'/><circle cx='0' cy='0' r='8.49' fill='url(%23g)'/><circle cx='12' cy='0' r='8.49' fill='url(%23g)'/><circle cx='0' cy='12' r='8.49' fill='url(%23g)'/><circle cx='12' cy='12' r='8.49' fill='url(%23g)'/><circle cx='6.0' cy='6.0' r='8.49' fill='url(%23g)'/></pattern><filter id='h' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='.0032' numOctaves='4' seed='8' stitchTiles='stitch' result='manchas'/><feTurbulence type='turbulence' baseFrequency='.012' numOctaves='3' seed='13' stitchTiles='stitch' result='pliegues'/><feComposite in='manchas' in2='pliegues' operator='arithmetic' k2='.7' k3='.9' k4='-.05' result='t'/><feColorMatrix in='t' type='matrix' values='.33 .33 .33 0 0  .33 .33 .33 0 0  .33 .33 .33 0 0  0 0 0 0 1' result='tono'/><feComposite in='SourceGraphic' in2='tono' operator='arithmetic' k2='1' k3='1.7' k4='-.5' result='suma'/><feColorMatrix in='suma' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1 0 0 0 1' result='a'/><feComponentTransfer in='a' result='m'><feFuncA type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/></feComponentTransfer><feFlood flood-color='%232b1a0b' flood-opacity='.52'/><feComposite operator='in' in2='m'/></filter></defs><rect width='900' height='900' fill='url(%23p)' filter='url(%23h)'/></svg>");
+  --tx-trama-gris: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='900'><defs><radialGradient id='g'><stop offset='0' stop-color='%23000'/><stop offset='1' stop-color='%23fff'/></radialGradient><pattern id='p' width='12' height='12' patternUnits='userSpaceOnUse'><rect width='12' height='12' fill='%23fff'/><circle cx='0' cy='0' r='8.49' fill='url(%23g)'/><circle cx='12' cy='0' r='8.49' fill='url(%23g)'/><circle cx='0' cy='12' r='8.49' fill='url(%23g)'/><circle cx='12' cy='12' r='8.49' fill='url(%23g)'/><circle cx='6.0' cy='6.0' r='8.49' fill='url(%23g)'/></pattern><filter id='h' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='.0032' numOctaves='4' seed='3' stitchTiles='stitch' result='manchas'/><feTurbulence type='turbulence' baseFrequency='.012' numOctaves='3' seed='8' stitchTiles='stitch' result='pliegues'/><feComposite in='manchas' in2='pliegues' operator='arithmetic' k2='.7' k3='.9' k4='-.05' result='t'/><feColorMatrix in='t' type='matrix' values='.33 .33 .33 0 0  .33 .33 .33 0 0  .33 .33 .33 0 0  0 0 0 0 1' result='tono'/><feComposite in='SourceGraphic' in2='tono' operator='arithmetic' k2='1' k3='1.7' k4='-.52' result='suma'/><feColorMatrix in='suma' type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -1 0 0 0 1' result='a'/><feComponentTransfer in='a' result='m'><feFuncA type='discrete' tableValues='0 0 0 0 0 1 1 1 1 1'/></feComponentTransfer><feFlood flood-color='%23221f1c' flood-opacity='.62'/><feComposite operator='in' in2='m'/></filter></defs><rect width='900' height='900' fill='url(%23p)' filter='url(%23h)'/></svg>");
   /* "texto de revista" de fondo en algunos recortes */
   --tx-impreso: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, .07) 3px 4px);
 }
@@ -26,12 +29,12 @@ body[data-theme="collage"] {
   --panel: rgba(236, 222, 197, .97); --panel-ink: #24190e; --panel-line: rgba(36, 25, 14, .16);
   --selection: rgba(232, 67, 46, .35); --card: rgba(255, 246, 228, .45); --card-hover: rgba(255, 246, 228, .7);
   --paper: rgba(214, 180, 135, .55); --break: rgba(36, 25, 14, .25);
-  --pattern: var(--tx-fibras), var(--tx-kraft);
+  --pattern: var(--tx-trama-cafe), var(--tx-fibras), var(--tx-kraft);
 }
 
 /* --------------------------- Collage blanco y negro ------------------------ */
 body[data-theme="collage-bn"] {
-  --bg: #9b9893; --bg-deep: #77746f;
+  --bg: #b4afa6; --bg-deep: #948f87;
   --ink: #111; --ink-soft: rgba(17, 17, 17, .55);
   --ui: #161616; --ui-soft: rgba(22, 22, 22, .65);
   --rail: #121212; --rail-hi: #4a4a4a; --carriage: #cfcfcf; --carriage-hi: #e3e3e3;
@@ -40,7 +43,7 @@ body[data-theme="collage-bn"] {
   --panel: rgba(232, 232, 230, .97); --panel-ink: #151515; --panel-line: rgba(0, 0, 0, .16);
   --selection: rgba(0, 0, 0, .25); --card: rgba(255, 255, 255, .45); --card-hover: rgba(255, 255, 255, .7);
   --paper: rgba(200, 198, 194, .6); --break: rgba(0, 0, 0, .25);
-  --pattern: var(--tx-gris);
+  --pattern: var(--tx-trama-gris), var(--tx-gris);
 }
 
 /* Recortes: cada palabra es un papelito pegado */
@@ -191,3 +194,11 @@ body:not(.view-editor) #notes-layer, body.hide-notes #notes-layer { display: non
 body[data-theme="collage-bn"] .note, body[data-theme="fotocopia"] .note {
   filter: grayscale(1) contrast(1.05) drop-shadow(0 2px 2px rgba(0, 0, 0, .22)) drop-shadow(0 6px 10px rgba(0, 0, 0, .12));
 }
+
+/* sobre la trama de puntos, la barra superior lleva una franja de papel liso para leerse bien */
+body[data-theme^="collage"].view-editor #topbar {
+  background: linear-gradient(to bottom, var(--bg) 0, var(--bg) 70%, transparent);
+  height: 60px;
+}
+body[data-theme^="collage"].view-editor #notes-btn { background: var(--bg); box-shadow: 0 0 0 6px var(--bg); }
+body[data-theme^="collage"] .lib-inner { background: var(--bg); border-radius: 18px; padding-left: 40px; padding-right: 40px; box-shadow: 0 0 40px 20px var(--bg); margin-top: 56px; padding-top: 48px; }
