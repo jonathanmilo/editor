@@ -139,7 +139,7 @@ function buildMenu() {
       submenu: [
         { label: 'Modo máquina de escribir', accelerator: 'CmdOrCtrl+Shift+T', click: () => send('toggle-typewriter') },
         { label: 'Cambiar tema claro/oscuro', accelerator: 'CmdOrCtrl+Shift+L', click: () => send('toggle-theme') },
-        { label: 'Notas de escritura', accelerator: 'CmdOrCtrl+Shift+N', click: () => send('toggle-notes') },
+        { label: 'Nueva nota de escritura', accelerator: 'CmdOrCtrl+Shift+N', click: () => send('toggle-notes') },
         { label: 'Ajustes', accelerator: 'CmdOrCtrl+,', click: () => send('toggle-settings') },
         { type: 'separator' },
         { role: 'zoomIn', label: 'Acercar' },

@@ -85,7 +85,7 @@
   // ---------------- Ajustes ----------------
   const DEFAULTS = {
     theme: 'clasico', lastLight: 'clasico', lastDark: 'noche', typewriter: true, font: 'Courier Prime',
-    zoom: 130, rail: 77, light: 100, sound: true, fade: true, strict: false, showSheet: false,
+    showNotes: true, zoom: 130, rail: 77, light: 100, sound: true, fade: true, strict: false, showSheet: false,
     pageDefault: PAGE_DEFAULT,
   };
   let S = { ...DEFAULTS };
@@ -104,7 +104,14 @@
     ['pizarra', 'Pizarra', true, '#2f4237', '#eef2e6', '#7a5a3b'],
     ['fosforo', 'Fósforo', true, '#0b100c', '#5dff8f', '#1f4a2b'],
     ['noche', 'Noche', true, '#1c1917', '#efe6d8', '#3a3532'],
+    ['collage', 'Collage', false, '#b48a58', '#1b140c', '#241a10'],
+    ['collage-bn', 'Collage B/N', false, '#9b9893', '#111111', '#121212'],
+    ['fotocopia', 'Fotocopia', false, '#e9e8e2', '#0d0d0d', '#151515'],
   ];
+  // temas que visten cada palabra (recortes o tóner irregular)
+  const WORD_MODE = { collage: 'collage', 'collage-bn': 'collage', fotocopia: 'fotocopia' };
+  const wordMode = () => WORD_MODE[S.theme] || null;
+  let lastWordMode = null;
   const themeOf = (id) => THEMES.find((t) => t[0] === id) || THEMES[0];
   if (!THEMES.some((t) => t[0] === S.theme)) S.theme = 'clasico';
 
@@ -119,6 +126,20 @@
       'linear-gradient(rgba(255,255,255,.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.18) 1px, transparent 1px)';
     if (id === 'plano') b.querySelector('.pv').style.backgroundSize = '8px 8px';
     if (id === 'fosforo') b.querySelector('.pv').style.textShadow = '0 0 5px rgba(93,255,143,.7)';
+    if (id === 'collage' || id === 'collage-bn') {
+      const color = id === 'collage';
+      b.querySelector('.pv').innerHTML =
+        `<i style="font:400 14px 'Archivo Black';background:${color ? '#4767b6' : '#111'};color:#fff;padding:0 3px;transform:rotate(-4deg)">A</i>` +
+        `<i style="font:400 16px 'Abril Fatface';background:#fff;color:#111;padding:0 3px;transform:rotate(3deg)">a</i>`;
+      b.querySelector('.pv').style.cssText += ';display:flex;gap:2px;align-items:center;justify-content:center;background-image:var(--tx-kraft)';
+      b.querySelectorAll('.pv i').forEach((i) => { i.style.display = 'inline-block'; i.style.fontStyle = 'normal'; i.style.boxShadow = '0 1px 1px rgba(0,0,0,.35)'; });
+    }
+    if (id === 'fotocopia') {
+      const pv = b.querySelector('.pv');
+      pv.style.fontFamily = "'Nunito', sans-serif"; pv.style.fontWeight = '900';
+      pv.style.backgroundImage = 'var(--tx-toner), var(--tx-grano)';
+      pv.style.textShadow = '0 0 .8px #000';
+    }
     b.addEventListener('mousedown', (e) => e.preventDefault());
     b.onclick = () => setTheme(id);
     themesEl.appendChild(b);
@@ -154,6 +175,9 @@
     $('#s-strict').checked = S.strict;
     $('#s-sheet').checked = S.showSheet;
     api.setTheme({ color: th[3], symbolColor: th[4] });
+    body.classList.toggle('hide-notes', !S.showNotes);
+    $('#s-notes').checked = S.showNotes;
+    if (wordMode() !== lastWordMode) { lastWordMode = wordMode(); ed?.refreshWordStyle(); document.fonts.ready.then(() => layout(true)); }
     fillPageForm();
     layout(true);
   }
@@ -168,6 +192,7 @@
   $('#s-fade').onchange = (e) => set('fade', e.target.checked);
   $('#s-strict').onchange = (e) => set('strict', e.target.checked);
   $('#s-sheet').onchange = (e) => set('showSheet', e.target.checked);
+  $('#s-notes').onchange = (e) => set('showNotes', e.target.checked);
   $('#tw-switch').onchange = (e) => { set('typewriter', e.target.checked); ed?.commands.focus(); };
   $('#theme-btn').onclick = toggleLightDark;
 
@@ -606,7 +631,6 @@
     clearTimeout(saveT);
     doc.html = ed.getHTML();
     doc.text = plainText();
-    doc.notes = $('#notes').value;
     doc.title = docName() || titleOf(doc.text);
     doc.words = countWords(doc.text);
     doc.updated = Date.now();
@@ -648,7 +672,7 @@
 
     const res = await api.saveFile({
       path: src?.path, format: asFormat || src?.format || 'docx', name: fileBase(),
-      content: { json: ed.getJSON(), html: ed.getHTML(), text: plainText() },
+      content: { json: ed.getJSON(), html: ed.getHTML(), text: plainText(), notes: (doc.notes || []).map((n) => n.text.trim()).filter(Boolean) },
       page: doc.page, font: S.font, dialog: needDialog,
     });
     if (!res) return false;
@@ -677,6 +701,7 @@
       placeholder: 'Empieza a escribir…',
       maxImageWidth: colPx,
       ownScroll: () => S.typewriter,
+      wordMode,
       onUpdate: () => { review = 0; updateCount(); dirty(true); layout(); },
       onSelection: () => { updateToolbar(); schedule(); },
       onError: toast,
@@ -692,7 +717,8 @@
     doc = d;
     body.classList.replace('view-library', 'view-editor');
     mountEditor(d.html ?? textToHtml(d.text || ''));
-    $('#notes').value = d.notes || '';
+    doc.notes = normalizeNotes(d.notes);
+    renderNotes();
     updateCount();
     updateFileName();
     fillPageForm();
@@ -704,10 +730,10 @@
 
   }
 
-  async function newDoc({ html = '', page = null, source = null } = {}) {
+  async function newDoc({ html = '', page = null, source = null, notes = null } = {}) {
     const now = Date.now();
     const d = {
-      id: newId(), title: 'Sin título', html, text: '', notes: '', created: now, updated: now, words: 0,
+      id: newId(), title: 'Sin título', html, text: '', notes: (notes || []).map((t) => ({ id: newId(), text: t })), created: now, updated: now, words: 0,
       page: fixPage({ ...S.pageDefault, ...(page || {}) }), source,
     };
     await openDoc(d);
@@ -726,11 +752,12 @@
         if (full && !full.fileDirty) {
           full.html = r.html;
           if (r.page) full.page = { ...full.page, ...r.page };
+          if (r.notes) full.notes = r.notes.map((t) => ({ id: newId(), text: t }));
           return openDoc(full);
         }
       }
     }
-    await newDoc({ html: r.html, page: r.page, source: { path: r.path, name: r.name, format: r.format, imported: true } });
+    await newDoc({ html: r.html, page: r.page, notes: r.notes, source: { path: r.path, name: r.name, format: r.format, imported: true } });
     if (r.format === 'doc') toast('Los .doc antiguos se abren solo con su texto; al guardar se creará un .docx', 4000);
     else toast(`Abierto: ${r.name}.${r.format}`);
   }
@@ -741,6 +768,7 @@
   async function showLibrary() {
     if (doc) { clearTimeout(autoT); await runAutosave(); await save(); doc = null; }
     if (ed) { ed.destroy(); ed = null; host.innerHTML = ''; }
+    notesLayer.innerHTML = '';
     closePanels();
     body.classList.remove('in-table');
     body.classList.replace('view-editor', 'view-library');
@@ -777,11 +805,122 @@
     }
   }
 
-  $('#notes').addEventListener('input', () => dirty(false));
   $('#back').onclick = showLibrary;
   $('#lib-new').onclick = () => newDoc();
   $('#lib-open').onclick = openFile;
   document.querySelectorAll('[data-export]').forEach((b) => (b.onclick = () => saveToFile({ asFormat: b.dataset.export })));
+
+  // ---------------- Notas de escritura: papelitos pegados al margen ----------------
+  // Se guardan con el documento y, al guardar en Word o PDF, como notas adjuntas
+  // (comentarios en Word, notas adhesivas en PDF).
+  const notesLayer = $('#notes-layer');
+  const NOTE_W = 210;
+  // papel, bordes rasgados [arriba, derecha, abajo, izquierdo] y adornos
+  const NOTE_STYLES = [
+    { cls: 'kraft', torn: [1, 1, 1, 1], deco: '<span class="tape top"></span>' },
+    { cls: 'cuadros', torn: [1, 0, 1, 0], deco: '<span class="tape tl"></span><span class="tape br"></span>' },
+    { cls: 'crema', torn: [0, 0, 0, 1], deco: '<svg class="clip" viewBox="0 0 18 52"><path d="M5 40V9a4 4 0 0 1 8 0v34a6 6 0 0 1-12 0V14" fill="none" stroke="#6b6b6b" stroke-width="2.2" stroke-linecap="round"/></svg>' },
+    { cls: 'azul', torn: [1, 1, 1, 1], deco: '<span class="tape top gold"></span>' },
+    { cls: 'gris', torn: [1, 1, 1, 1], deco: '<span class="tape dots"></span>' },
+    { cls: 'amarillo', torn: [0, 0, 1, 0], deco: '<span class="tape top"></span>' },
+  ];
+  const rng = (seed) => () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  const seedOf = (str) => { let h = 7; for (const c of str) h = Math.imul(h ^ c.charCodeAt(0), 2654435761) >>> 0; return h; };
+
+  // contorno rasgado (clip-path) con dientes al azar, siempre igual para la misma nota
+  function tornClip(note, torn) {
+    const r = rng(seedOf(note.id)), pts = [], n = 22, j = (on, max) => (on ? (r() * max).toFixed(1) : 0);
+    for (let i = 0; i <= n; i++) pts.push(`${(i * 100 / n).toFixed(1)}% ${j(torn[0], 7)}px`);
+    for (let i = 1; i <= n; i++) pts.push(`calc(100% - ${j(torn[1], 6)}px) ${(i * 100 / n).toFixed(1)}%`);
+    for (let i = n - 1; i >= 0; i--) pts.push(`${(i * 100 / n).toFixed(1)}% calc(100% - ${j(torn[2], 7)}px)`);
+    for (let i = n - 1; i >= 1; i--) pts.push(`${j(torn[3], 6)}px ${(i * 100 / n).toFixed(1)}%`);
+    return `polygon(${pts.join(',')})`;
+  }
+
+  function normalizeNotes(notes) {
+    if (Array.isArray(notes)) return notes.filter((n) => n && typeof n.text === 'string');
+    if (typeof notes === 'string' && notes.trim()) return [{ id: newId(), text: notes }]; // versión anterior: un solo texto
+    return [];
+  }
+
+  // lugar libre en el margen: a la derecha de la columna de texto, o a la izquierda si no entra
+  function defaultSpot(i) {
+    const c = col.getBoundingClientRect();
+    const right = c.right + 36, left = c.left - NOTE_W - 36;
+    const fitsRight = right + NOTE_W <= window.innerWidth - 12, fitsLeft = left >= 12;
+    // se apilan hacia abajo; cuando no entran, siguen en el otro margen
+    const perCol = Math.max(1, Math.floor((window.innerHeight - 160) / 165));
+    const colN = Math.floor(i / perCol);
+    const xs = [fitsRight ? right : null, fitsLeft ? left : null].filter((v) => v != null);
+    const x = xs.length ? xs[colN % xs.length] : window.innerWidth - NOTE_W - 16;
+    const y = 104 + (i % perCol) * 165 + (colN >= xs.length ? 24 : 0);
+    return { x: x / window.innerWidth, y: y / window.innerHeight };
+  }
+
+  function renderNotes() {
+    notesLayer.innerHTML = '';
+    if (!doc) return;
+    doc.notes.forEach((note, i) => {
+      if (note.x == null || note.y == null) Object.assign(note, defaultSpot(i));
+      const st = NOTE_STYLES[(note.style ?? i) % NOTE_STYLES.length];
+      note.style = NOTE_STYLES.indexOf(st);
+      const el = document.createElement('div');
+      el.className = `note ${st.cls}`;
+      el.style.setProperty('--rot', ((rng(seedOf(note.id) + 9)() - .5) * 6).toFixed(2) + 'deg');
+      el.innerHTML = `${st.deco}<div class="paper"><textarea rows="2" placeholder="Escribe una nota…" spellcheck="true"></textarea></div><button class="del" title="Quitar la nota" aria-label="Quitar la nota">×</button>`;
+      el.querySelector('.paper').style.clipPath = tornClip(note, st.torn);
+      const ta = el.querySelector('textarea');
+      ta.value = note.text;
+      const fit = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+      ta.addEventListener('input', () => { note.text = ta.value; fit(); dirty(true); });
+      ta.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') { ta.blur(); ed?.commands.focus(); } });
+      el.querySelector('.del').onclick = () => {
+        if (note.text.trim() && !confirm('¿Quitar esta nota?')) return;
+        doc.notes = doc.notes.filter((n) => n !== note);
+        renderNotes(); dirty(true); ed?.commands.focus();
+      };
+      placeNote(el, note);
+      makeDraggable(el, note);
+      notesLayer.appendChild(el);
+      requestAnimationFrame(fit);
+    });
+  }
+
+  function placeNote(el, note) {
+    const x = Math.min(Math.max(0, note.x * window.innerWidth), window.innerWidth - 60);
+    const y = Math.min(Math.max(48, note.y * window.innerHeight), window.innerHeight - 60);
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+  }
+
+  function makeDraggable(el, note) {
+    el.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('textarea, .del')) return;
+      e.preventDefault();
+      el.setPointerCapture(e.pointerId);
+      el.classList.add('dragging');
+      const dx = e.clientX - el.offsetLeft, dy = e.clientY - el.offsetTop;
+      const move = (ev) => { el.style.left = ev.clientX - dx + 'px'; el.style.top = ev.clientY - dy + 'px'; };
+      const up = () => {
+        el.classList.remove('dragging');
+        note.x = el.offsetLeft / window.innerWidth; note.y = el.offsetTop / window.innerHeight;
+        el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up);
+        dirty(false);
+      };
+      el.addEventListener('pointermove', move);
+      el.addEventListener('pointerup', up);
+    });
+  }
+
+  function addNote() {
+    if (!doc) return;
+    if (!S.showNotes) set('showNotes', true);
+    const note = { id: newId(), text: '', style: doc.notes.length % NOTE_STYLES.length, ...defaultSpot(doc.notes.length) };
+    doc.notes.push(note);
+    renderNotes();
+    notesLayer.lastElementChild?.querySelector('textarea').focus();
+    dirty(false);
+  }
+  window.addEventListener('resize', () => notesLayer.querySelectorAll('.note').forEach((el, i) => doc?.notes[i] && placeNote(el, doc.notes[i])));
 
   // ---------------- Arrastrar y soltar archivos ----------------
   // Las imágenes soltadas sobre el texto las inserta el editor; los documentos se abren.
@@ -819,13 +958,13 @@
     const open = force ?? !el.classList.contains('open');
     closePanels();
     el.classList.toggle('open', open);
-    if (open && name === 'notes') $('#notes').focus();
     if (open && name === 'settings') fillPageForm();
     if (!open || name === 'settings') ed?.commands.focus();
   }
   function closePanels() { document.querySelectorAll('.panel').forEach((p) => p.classList.remove('open')); }
 
-  $('#notes-btn').onclick = () => togglePanel('notes');
+  $('#notes-btn').addEventListener('mousedown', (e) => e.preventDefault());
+  $('#notes-btn').onclick = () => addNote();
   $('#settings-btn').onclick = () => togglePanel('settings');
   $('#settings-btn').addEventListener('mousedown', (e) => e.preventDefault()); // el texto conserva el foco y la selección
   document.querySelectorAll('[data-close]').forEach((b) => (b.onclick = () => togglePanel(b.dataset.close, false)));
@@ -847,7 +986,7 @@
       case 'insert-table': return inEditor && ed.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
       case 'toggle-typewriter': return set('typewriter', !S.typewriter);
       case 'toggle-theme': return toggleLightDark();
-      case 'toggle-notes': return inEditor && togglePanel('notes');
+      case 'toggle-notes': return inEditor && addNote();
       case 'toggle-settings': return inEditor && togglePanel('settings');
     }
   }

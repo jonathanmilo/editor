@@ -15,10 +15,32 @@
   <link rel="stylesheet" href="../node_modules/@fontsource/newsreader/400.css" />
   <link rel="stylesheet" href="../node_modules/@fontsource/inter/400.css" />
   <link rel="stylesheet" href="../node_modules/@fontsource/inter/500.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/archivo-black/400.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/playfair-display/900.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/playfair-display/400-italic.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/abril-fatface/400.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/anton/400.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/libre-baskerville/400-italic.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/oswald/700.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/alfa-slab-one/400.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/special-elite/400.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/lobster/400.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/roboto-slab/800.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/nunito/400.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/nunito/800.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/nunito/900.css" />
+  <link rel="stylesheet" href="../node_modules/@fontsource/caveat/400.css" />
   <link rel="stylesheet" href="content.css" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="temas-especiales.css" />
 </head>
 <body data-theme="clasico" class="typewriter view-library">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="fotocopia-aspera" x="-1%" y="-1%" width="102%" height="102%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.2" numOctaves="1" seed="3" result="ruido" />
+      <feDisplacementMap in="SourceGraphic" in2="ruido" scale="1.4" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
 
   <!-- ================= BIBLIOTECA ================= -->
   <section id="library" aria-label="Biblioteca">
@@ -100,20 +122,12 @@
     </header>
 
 
-    <button id="notes-btn" title="Ctrl+Shift+N">Notas de escritura
+    <button id="notes-btn" title="Pegar una nota nueva al margen (Ctrl+Shift+N)">+ Nota de escritura
       <svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4"/></svg>
     </button>
 
-    <!-- panel de notas -->
-    <aside id="notes-panel" class="panel">
-      <div class="panel-head">
-        <h2>Notas de escritura</h2>
-        <button class="icon close" data-close="notes" aria-label="Cerrar">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
-        </button>
-      </div>
-      <textarea id="notes" placeholder="Personajes, ideas, pendientes…"></textarea>
-    </aside>
+    <!-- notas: papelitos pegados al margen -->
+    <div id="notes-layer"></div>
 
     <!-- panel de ajustes -->
     <aside id="settings-panel" class="panel">
@@ -240,6 +254,9 @@
       <div class="field">
         <label for="s-light">Intensidad de la luz <output id="o-light"></output></label>
         <input type="range" id="s-light" min="0" max="100" step="5" />
+      </div>
+      <div class="field check">
+        <label><input type="checkbox" id="s-notes" /> Mostrar las notas en el margen</label>
       </div>
       <div class="field check">
         <label><input type="checkbox" id="s-sound" /> Sonido de teclas</label>

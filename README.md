@@ -35,9 +35,30 @@ sin perder la máquina de escribir (riel, carro, luz y hoja).
 ## Papel
 
 En **Ajustes → Papel** se elige el tema: **Clásico**, **Marfil**, **Sepia**, **Plano** (azul de plano de
-arquitecto, con cuadrícula), **Pizarra**, **Fósforo** (verde de terminal antigua) y **Noche**.
+arquitecto, con cuadrícula), **Pizarra**, **Fósforo** (verde de terminal antigua), **Noche** y tres especiales:
+
+- **Collage**: cada palabra parece recortada de una revista y pegada sobre papel madera
+  (tipografías, colores, tamaños y giros distintos).
+- **Collage B/N**: lo mismo, con recortes en blanco y negro sobre cartón gris.
+- **Fotocopia**: letra redondeada con la tinta corrida, tóner desparejo y motas, como una fotocopia mal escaneada.
+
+Cada palabra mantiene su recorte mientras escribes.
 El botón ☀/☾ alterna entre tu último tema claro y tu último tema oscuro. El tema solo cambia la
 pantalla: los PDF y Word se guardan siempre en blanco y negro.
+
+## Notas de escritura
+
+Con **+ Nota de escritura** (Ctrl+Shift+N) se pega un papelito al margen: papel madera, cuadriculado con cinta,
+celeste, con clip… Se escribe directamente en él, se arrastra a cualquier lugar y se quita con la ✕.
+En Ajustes se pueden ocultar.
+
+Al guardar, las notas viajan con el archivo:
+
+- **Word**: como **comentarios** (los globos al margen de Word o LibreOffice).
+- **PDF**: como **notas adhesivas** en el margen de la primera página (Acrobat, Edge, Firefox…).
+- **TXT y Markdown**: no admiten notas; la app avisa al guardar.
+
+Al abrir un Word con comentarios o un PDF con notas adhesivas, se convierten en notas de escritura.
 
 ## Formatos
 

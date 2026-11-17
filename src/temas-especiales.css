@@ -1,0 +1,193 @@
+/* ==========================================================================
+   Temas especiales: Collage (color), Collage B/N y Fotocopia
+   Solo cambian la pantalla: lo que se guarda en Word/PDF queda limpio.
+   ========================================================================== */
+
+/* Texturas generadas (sin imágenes externas) */
+:root {
+  --tx-kraft: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .32  0 0 0 0 .2  0 0 0 0 .08  0 0 0 .5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --tx-fibras: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.012 .9' numOctaves='2' seed='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .25  0 0 0 0 .15  0 0 0 0 .05  0 0 0 .35 -.05'/></filter><rect width='100%25' height='100%25' filter='url(%23f)'/></svg>");
+  --tx-gris: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .1  0 0 0 0 .1  0 0 0 0 .1  0 0 0 .55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  /* motas de tóner: ruido fino umbralizado */
+  --tx-toner: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><filter id='t'><feTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' seed='7' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncA type='discrete' tableValues='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 .9 1'/></feComponentTransfer><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%25' height='100%25' filter='url(%23t)'/></svg>");
+  --tx-grano: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='turbulence' baseFrequency='1.6' numOctaves='1' seed='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -.35 .2'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+  /* "texto de revista" de fondo en algunos recortes */
+  --tx-impreso: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, .07) 3px 4px);
+}
+
+/* ----------------------------- Collage color ----------------------------- */
+body[data-theme="collage"] {
+  --bg: #b48a58; --bg-deep: #93693b;
+  --ink: #1b140c; --ink-soft: rgba(27, 20, 12, .55);
+  --ui: #2a1d10; --ui-soft: rgba(42, 29, 16, .7);
+  --rail: #241a10; --rail-hi: #5c4329; --carriage: #d8c3a2; --carriage-hi: #e8d7bb;
+  --led-on: #e8432e; --led-off: #3d2c1b;
+  --light-core: 255, 240, 212; --light-mid: 240, 205, 150; --light-alpha: .55;
+  --panel: rgba(236, 222, 197, .97); --panel-ink: #24190e; --panel-line: rgba(36, 25, 14, .16);
+  --selection: rgba(232, 67, 46, .35); --card: rgba(255, 246, 228, .45); --card-hover: rgba(255, 246, 228, .7);
+  --paper: rgba(214, 180, 135, .55); --break: rgba(36, 25, 14, .25);
+  --pattern: var(--tx-fibras), var(--tx-kraft);
+}
+
+/* --------------------------- Collage blanco y negro ------------------------ */
+body[data-theme="collage-bn"] {
+  --bg: #9b9893; --bg-deep: #77746f;
+  --ink: #111; --ink-soft: rgba(17, 17, 17, .55);
+  --ui: #161616; --ui-soft: rgba(22, 22, 22, .65);
+  --rail: #121212; --rail-hi: #4a4a4a; --carriage: #cfcfcf; --carriage-hi: #e3e3e3;
+  --led-on: #ffffff; --led-off: #2a2a2a;
+  --light-core: 255, 255, 255; --light-mid: 225, 225, 225; --light-alpha: .55;
+  --panel: rgba(232, 232, 230, .97); --panel-ink: #151515; --panel-line: rgba(0, 0, 0, .16);
+  --selection: rgba(0, 0, 0, .25); --card: rgba(255, 255, 255, .45); --card-hover: rgba(255, 255, 255, .7);
+  --paper: rgba(200, 198, 194, .6); --break: rgba(0, 0, 0, .25);
+  --pattern: var(--tx-gris);
+}
+
+/* Recortes: cada palabra es un papelito pegado */
+body[data-theme^="collage"] #text .doc-content { --doc-lh: 2.05; text-shadow: none; caret-color: var(--ink); }
+body[data-theme^="collage"] .cw {
+  display: inline-block; padding: .06em .26em .1em; margin: .08em .03em; line-height: 1.08;
+  box-shadow: 0 1px 1.5px rgba(0, 0, 0, .35), 0 0 0 .5px rgba(0, 0, 0, .06);
+  vertical-align: middle; background-clip: padding-box;
+}
+body[data-theme^="collage"] .cw.r0 { transform: rotate(-2.4deg); }
+body[data-theme^="collage"] .cw.r1 { transform: rotate(-1.2deg); }
+body[data-theme^="collage"] .cw.r2 { transform: rotate(-.4deg); }
+body[data-theme^="collage"] .cw.r3 { transform: rotate(.5deg); }
+body[data-theme^="collage"] .cw.r4 { transform: rotate(1.3deg); }
+body[data-theme^="collage"] .cw.r5 { transform: rotate(2.2deg) translateY(.04em); }
+body[data-theme^="collage"] .cw.r6 { transform: rotate(-.8deg) translateY(-.05em); }
+body[data-theme^="collage"] .cw.z0 { font-size: .92em; }
+body[data-theme^="collage"] .cw.z1 { font-size: 1.04em; }
+body[data-theme^="collage"] .cw.z2 { font-size: 1.18em; }
+body[data-theme^="collage"] .cw.z3 { font-size: 1.32em; }
+/* tijera: bordes algo irregulares (sin sombra, que el recorte la cortaría) */
+body[data-theme^="collage"] .cw.c1 { clip-path: polygon(0 6%, 100% 0, 98% 100%, 3% 94%); box-shadow: none; }
+body[data-theme^="collage"] .cw.c2 { clip-path: polygon(2% 0, 97% 5%, 100% 92%, 0 100%); box-shadow: none; }
+
+/* Paleta a color (como la referencia) */
+body[data-theme="collage"] .cw.s0  { background: #fff; color: #141414; font-family: 'Archivo Black', sans-serif; }
+body[data-theme="collage"] .cw.s1  { background: #4767b6; color: #fff; font-family: 'Archivo Black', sans-serif; }
+body[data-theme="collage"] .cw.s2  { background: #f4ecdc; color: #8e1c22; font-family: 'Playfair Display', serif; font-weight: 900; }
+body[data-theme="collage"] .cw.s3  { background: #fff; color: #111; font-family: 'Abril Fatface', serif; }
+body[data-theme="collage"] .cw.s4  { background: #d52a2e; color: #fff; font-family: 'Anton', sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+body[data-theme="collage"] .cw.s5  { background: #f5c3d6; color: #222; font-family: 'Libre Baskerville', serif; font-style: italic; }
+body[data-theme="collage"] .cw.s6  { background: #141414; color: #fff; font-family: 'Oswald', sans-serif; font-weight: 700; text-transform: uppercase; }
+body[data-theme="collage"] .cw.s7  { background: #ffd84a; color: #c3161c; font-family: 'Alfa Slab One', serif; }
+body[data-theme="collage"] .cw.s8  { background: #e6eef3; color: #2a5f7f; font-family: 'Special Elite', monospace; }
+body[data-theme="collage"] .cw.s9  { background: #fffdf5; color: #1d1d1d; font-family: 'Lobster', cursive; }
+body[data-theme="collage"] .cw.s10 { background: #cfe3c6; color: #1f3d22; font-family: 'Roboto Slab', serif; font-weight: 800; }
+body[data-theme="collage"] .cw.s11 { background: #fbfaf4 var(--tx-impreso); color: #444; font-family: 'Playfair Display', serif; font-style: italic; }
+body[data-theme="collage"] .cw.s12 { background: #ede7da var(--tx-impreso); color: #111; font-family: 'Oswald', sans-serif; font-weight: 700; }
+body[data-theme="collage"] .cw.s13 { background: #fff; color: #3a6a8c; font-family: 'Archivo Black', sans-serif; letter-spacing: -.01em; }
+
+/* Paleta blanco y negro: diario, fotocopias de revista */
+body[data-theme="collage-bn"] .cw.s0  { background: #fff; color: #111; font-family: 'Archivo Black', sans-serif; }
+body[data-theme="collage-bn"] .cw.s1  { background: #111; color: #fff; font-family: 'Archivo Black', sans-serif; }
+body[data-theme="collage-bn"] .cw.s2  { background: #f2f2ef; color: #111; font-family: 'Playfair Display', serif; font-weight: 900; }
+body[data-theme="collage-bn"] .cw.s3  { background: #fff; color: #000; font-family: 'Abril Fatface', serif; }
+body[data-theme="collage-bn"] .cw.s4  { background: #2b2b2b; color: #f5f5f5; font-family: 'Anton', sans-serif; text-transform: uppercase; letter-spacing: .02em; }
+body[data-theme="collage-bn"] .cw.s5  { background: #e9e9e6; color: #222; font-family: 'Libre Baskerville', serif; font-style: italic; }
+body[data-theme="collage-bn"] .cw.s6  { background: #000; color: #fff; font-family: 'Oswald', sans-serif; font-weight: 700; text-transform: uppercase; }
+body[data-theme="collage-bn"] .cw.s7  { background: #d8d8d5; color: #000; font-family: 'Alfa Slab One', serif; }
+body[data-theme="collage-bn"] .cw.s8  { background: #fafaf7; color: #333; font-family: 'Special Elite', monospace; }
+body[data-theme="collage-bn"] .cw.s9  { background: #fff; color: #111; font-family: 'Lobster', cursive; }
+body[data-theme="collage-bn"] .cw.s10 { background: #bdbdba; color: #111; font-family: 'Roboto Slab', serif; font-weight: 800; }
+body[data-theme="collage-bn"] .cw.s11 { background: #f7f7f4 var(--tx-impreso); color: #444; font-family: 'Playfair Display', serif; font-style: italic; }
+body[data-theme="collage-bn"] .cw.s12 { background: #e4e4e0 var(--tx-impreso); color: #111; font-family: 'Oswald', sans-serif; font-weight: 700; }
+body[data-theme="collage-bn"] .cw.s13 { background: #fff; color: #555; font-family: 'Archivo Black', sans-serif; letter-spacing: -.01em; }
+
+/* ------------------------------- Fotocopia ------------------------------- */
+body[data-theme="fotocopia"] {
+  --bg: #efeee9; --bg-deep: #cfcec7;
+  --ink: #0d0d0d; --ink-soft: rgba(13, 13, 13, .45);
+  --ui: #141414; --ui-soft: rgba(20, 20, 20, .6);
+  --rail: #151515; --rail-hi: #555; --carriage: #d4d3cd; --carriage-hi: #e6e5df;
+  --led-on: #6ee36e; --led-off: #2b2b2b;
+  --light-core: 245, 252, 255; --light-mid: 225, 238, 245; --light-alpha: .5;
+  --panel: rgba(244, 243, 238, .97); --panel-ink: #121212; --panel-line: rgba(0, 0, 0, .15);
+  --selection: rgba(0, 0, 0, .2); --card: rgba(255, 255, 255, .5); --card-hover: rgba(255, 255, 255, .8);
+  --paper: rgba(250, 250, 246, .6); --break: rgba(0, 0, 0, .2);
+  /* polvo de tóner + grano + rayas del vidrio + bordes oscuros del escáner */
+  --pattern:
+    var(--tx-toner),
+    radial-gradient(ellipse 70% 40% at 50% 100%, rgba(0, 0, 0, .07), transparent 70%),
+    var(--tx-grano),
+    repeating-linear-gradient(90deg, transparent 0 211px, rgba(0, 0, 0, .05) 211px 212px, transparent 212px 523px, rgba(0, 0, 0, .035) 523px 525px),
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0, 0, 0, .28) 100%);
+}
+body[data-theme="fotocopia"]::before { mix-blend-mode: multiply; }
+body[data-theme="fotocopia"] #text .doc-content {
+  --doc-font: 'Nunito', 'Arial Rounded MT Bold', sans-serif;
+  font-weight: 800; letter-spacing: .01em;
+  /* tinta que se corre y bordes ásperos */
+  text-shadow: 0 0 .6px rgba(0, 0, 0, .9), .35px .25px 0 rgba(0, 0, 0, .55);
+  filter: url(#fotocopia-aspera);
+}
+/* tóner irregular: unas palabras salen más claras, otras corridas o engrosadas */
+body[data-theme="fotocopia"] .cw.s1, body[data-theme="fotocopia"] .cw.s8 { opacity: .88; }
+body[data-theme="fotocopia"] .cw.s2 { opacity: .8; letter-spacing: .03em; }
+body[data-theme="fotocopia"] .cw.s3 { text-shadow: 0 0 1.4px rgba(0, 0, 0, .85), .6px .4px 0 rgba(0, 0, 0, .6); }
+body[data-theme="fotocopia"] .cw.s5 { text-shadow: 1.2px 0 1.8px rgba(0, 0, 0, .55), 0 0 .8px #000; }
+body[data-theme="fotocopia"] .cw.s9 { opacity: .7; font-weight: 400; }
+body[data-theme="fotocopia"] .cw.s11 { font-weight: 900; }
+body[data-theme="fotocopia"] .cw.r0 { position: relative; top: .03em; }
+body[data-theme="fotocopia"] .cw.r5 { position: relative; top: -.03em; }
+
+/* ==========================================================================
+   Notas de escritura: papelitos pegados al margen
+   ========================================================================== */
+#notes-layer { position: fixed; inset: 0; pointer-events: none; z-index: 12; }
+body:not(.view-editor) #notes-layer, body.hide-notes #notes-layer { display: none; }
+.note {
+  position: absolute; width: 210px; pointer-events: auto; cursor: grab;
+  transform: rotate(var(--rot, 0deg)); transition: transform .2s, filter .2s;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .22)) drop-shadow(0 6px 10px rgba(0, 0, 0, .12));
+  touch-action: none;
+}
+.note.dragging { cursor: grabbing; transform: rotate(0deg) scale(1.03); filter: drop-shadow(0 10px 16px rgba(0, 0, 0, .3)); z-index: 2; }
+.note .paper { padding: 26px 18px 18px; min-height: 120px; }
+.note textarea {
+  display: block; width: 100%; border: 0; outline: 0; resize: none; overflow: hidden; background: transparent;
+  font: 400 21px/1.2 'Caveat', cursive; color: #2b2520; cursor: text; min-height: 60px;
+}
+.note textarea::placeholder { color: rgba(43, 37, 32, .45); }
+.note .del {
+  position: absolute; top: 4px; right: 6px; width: 22px; height: 22px; border: 0; border-radius: 50%;
+  background: rgba(0, 0, 0, .55); color: #fff; font-size: 14px; line-height: 22px; padding: 0;
+  opacity: 0; transition: opacity .15s; z-index: 3; cursor: pointer;
+}
+.note:hover .del, .note:focus-within .del { opacity: 1; }
+
+/* papeles */
+.note.kraft .paper { background: #a9845c var(--tx-kraft); }
+.note.kraft textarea { color: #24170b; }
+.note.azul .paper { background: #b9d3e6; }
+.note.crema .paper { background: #ece4d6 var(--tx-impreso); }
+.note.cuadros .paper {
+  background-color: #fbfbfb;
+  background-image: linear-gradient(rgba(70, 90, 130, .22) 1px, transparent 1px), linear-gradient(90deg, rgba(70, 90, 130, .22) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+.note.gris .paper { background: #d9d5ce; }
+.note.amarillo .paper { background: #f1e3a5; }
+
+/* cintas y clip */
+.note .tape {
+  position: absolute; width: 74px; height: 22px; background: rgba(226, 213, 168, .82); z-index: 2;
+  box-shadow: 0 0 0 .5px rgba(0, 0, 0, .05);
+}
+.note .tape.top { top: -10px; left: 50%; transform: translateX(-50%) rotate(-3deg); }
+.note .tape.tl { top: -6px; left: -18px; transform: rotate(-38deg); width: 62px; }
+.note .tape.br { bottom: -6px; right: -18px; transform: rotate(-38deg); width: 62px; }
+.note .tape.dots {
+  background-color: #f6f1e6; width: 30px; height: 84px; top: -14px; left: 14px; transform: rotate(6deg);
+  background-image: radial-gradient(circle, #1e1e1e 3px, transparent 3.5px); background-size: 14px 14px; opacity: .95;
+}
+.note .tape.gold { background: rgba(196, 160, 60, .85); }
+.note .clip { position: absolute; top: -14px; right: 22px; width: 18px; height: 52px; z-index: 2; }
+
+/* en los temas sin color, las notas también son en blanco y negro */
+body[data-theme="collage-bn"] .note, body[data-theme="fotocopia"] .note {
+  filter: grayscale(1) contrast(1.05) drop-shadow(0 2px 2px rgba(0, 0, 0, .22)) drop-shadow(0 6px 10px rgba(0, 0, 0, .12));
+}
