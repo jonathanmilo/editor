@@ -29,7 +29,8 @@ body[data-theme="collage"] {
   --panel: rgba(236, 222, 197, .97); --panel-ink: #24190e; --panel-line: rgba(36, 25, 14, .16);
   --selection: rgba(232, 67, 46, .35); --card: rgba(255, 246, 228, .45); --card-hover: rgba(255, 246, 228, .7);
   --paper: rgba(214, 180, 135, .55); --break: rgba(36, 25, 14, .25);
-  --pattern: var(--tx-trama-cafe), var(--tx-fibras), var(--tx-kraft);
+  --pattern: var(--tx-fibras), var(--tx-kraft);
+  --trama: var(--tx-trama-cafe);
 }
 
 /* --------------------------- Collage blanco y negro ------------------------ */
@@ -43,7 +44,8 @@ body[data-theme="collage-bn"] {
   --panel: rgba(232, 232, 230, .97); --panel-ink: #151515; --panel-line: rgba(0, 0, 0, .16);
   --selection: rgba(0, 0, 0, .25); --card: rgba(255, 255, 255, .45); --card-hover: rgba(255, 255, 255, .7);
   --paper: rgba(200, 198, 194, .6); --break: rgba(0, 0, 0, .25);
-  --pattern: var(--tx-trama-gris), var(--tx-gris);
+  --pattern: var(--tx-gris);
+  --trama: var(--tx-trama-gris);
 }
 
 /* Recortes: cada palabra es un papelito pegado */
@@ -202,3 +204,6 @@ body[data-theme^="collage"].view-editor #topbar {
 }
 body[data-theme^="collage"].view-editor #notes-btn { background: var(--bg); box-shadow: 0 0 0 6px var(--bg); }
 body[data-theme^="collage"] .lib-inner { background: var(--bg); border-radius: 18px; padding-left: 40px; padding-right: 40px; box-shadow: 0 0 40px 20px var(--bg); margin-top: 56px; padding-top: 48px; }
+
+/* el ajuste de textura solo aparece con los temas Collage */
+body:not(.is-collage) .only-collage { display: none; }

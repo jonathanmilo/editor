@@ -177,6 +177,10 @@
 
       <h3>Papel</h3>
       <div id="themes" class="themes"></div>
+      <div class="field only-collage">
+        <label for="s-trama">Textura del papel <output id="o-trama"></output></label>
+        <input type="range" id="s-trama" min="0" max="100" step="5" />
+      </div>
       <div class="panel-sep"></div>
 
       <h3>Hoja</h3>
@@ -276,6 +280,9 @@
           <button class="btn small" data-export="txt">.txt</button>
           <button class="btn small" data-export="md">.md</button>
         </div>
+      </div>
+      <div class="field check">
+        <label title="Si está desactivado, el PDF sale en blanco y negro, listo para imprimir"><input type="checkbox" id="s-pdflook" /> PDF con el aspecto del tema (papel, colores y recortes)</label>
       </div>
       <p class="hint">Ctrl+S guarda · Ctrl+Shift+S guarda como · arrastra los topes del riel para cambiar los márgenes · rueda del ratón para releer</p>
     </aside>

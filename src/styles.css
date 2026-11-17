@@ -150,7 +150,9 @@ body {
   user-select: none;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
-body::before { content: ''; position: fixed; inset: 0; background: var(--pattern, none); pointer-events: none; transition: opacity .4s; will-change: transform; transform: translateZ(0); }
+body::before { content: ''; position: fixed; inset: 0; background: var(--pattern, none); pointer-events: none; transition: opacity .4s; will-change: transform; transform: translateZ(0); z-index: -2; }
+/* trama de semitono (temas Collage): capa propia para poder regular su intensidad */
+body::after { content: ''; position: fixed; inset: 0; background: var(--trama, none); opacity: var(--trama-op, .45); pointer-events: none; will-change: transform; transform: translateZ(0); z-index: -1; }
 svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Vistas */

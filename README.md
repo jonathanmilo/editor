@@ -42,9 +42,12 @@ arquitecto, con cuadrícula), **Pizarra**, **Fósforo** (verde de terminal antig
 - **Collage B/N**: lo mismo, con recortes en blanco y negro sobre cartón gris.
 - **Fotocopia**: letra redondeada con la tinta corrida, tóner desparejo y motas, como una fotocopia mal escaneada.
 
-Cada palabra mantiene su recorte mientras escribes.
+Cada palabra mantiene su recorte mientras escribes. En los temas Collage, el papel lleva una trama de
+semitono (puntos de imprenta sobre papel arrugado); su intensidad se regula en **Ajustes → Papel → Textura del papel**.
 El botón ☀/☾ alterna entre tu último tema claro y tu último tema oscuro. El tema solo cambia la
-pantalla: los PDF y Word se guardan siempre en blanco y negro.
+pantalla en Word, TXT y Markdown. El **PDF**, en cambio, sale con el aspecto del tema (papel, colores,
+recortes y textura, cubriendo toda la hoja) mientras esté activada **Ajustes → PDF con el aspecto del tema**;
+desactivándola sale en blanco y negro, listo para imprimir. En ambos casos el texto del PDF se puede seleccionar.
 
 ## Notas de escritura
 

@@ -85,7 +85,7 @@
   // ---------------- Ajustes ----------------
   const DEFAULTS = {
     theme: 'clasico', lastLight: 'clasico', lastDark: 'noche', typewriter: true, font: 'Courier Prime',
-    showNotes: true, zoom: 130, rail: 77, light: 100, sound: true, fade: true, strict: false, showSheet: false,
+    showNotes: true, trama: 45, pdfLook: true, zoom: 130, rail: 77, light: 100, sound: true, fade: true, strict: false, showSheet: false,
     pageDefault: PAGE_DEFAULT,
   };
   let S = { ...DEFAULTS };
@@ -177,6 +177,10 @@
     api.setTheme({ color: th[3], symbolColor: th[4] });
     body.classList.toggle('hide-notes', !S.showNotes);
     $('#s-notes').checked = S.showNotes;
+    root.style.setProperty('--trama-op', (S.trama / 100).toFixed(2));
+    $('#s-trama').value = S.trama; $('#o-trama').textContent = S.trama + ' %';
+    body.classList.toggle('is-collage', WORD_MODE[S.theme] === 'collage');
+    $('#s-pdflook').checked = S.pdfLook;
     if (wordMode() !== lastWordMode) { lastWordMode = wordMode(); ed?.refreshWordStyle(); document.fonts.ready.then(() => layout(true)); }
     fillPageForm();
     layout(true);
@@ -193,6 +197,8 @@
   $('#s-strict').onchange = (e) => set('strict', e.target.checked);
   $('#s-sheet').onchange = (e) => set('showSheet', e.target.checked);
   $('#s-notes').onchange = (e) => set('showNotes', e.target.checked);
+  $('#s-trama').oninput = (e) => set('trama', +e.target.value);
+  $('#s-pdflook').onchange = (e) => set('pdfLook', e.target.checked);
   $('#tw-switch').onchange = (e) => { set('typewriter', e.target.checked); ed?.commands.focus(); };
   $('#theme-btn').onclick = toggleLightDark;
 
@@ -672,7 +678,7 @@
 
     const res = await api.saveFile({
       path: src?.path, format: asFormat || src?.format || 'docx', name: fileBase(),
-      content: { json: ed.getJSON(), html: ed.getHTML(), text: plainText(), notes: (doc.notes || []).map((n) => n.text.trim()).filter(Boolean) },
+      content: { json: ed.getJSON(), html: ed.getHTML(), look: needDialog || (asFormat || src?.format) === 'pdf' ? pdfLook() : null, /* también si se puede elegir PDF en el diálogo */ text: plainText(), notes: (doc.notes || []).map((n) => n.text.trim()).filter(Boolean) },
       page: doc.page, font: S.font, dialog: needDialog,
     });
     if (!res) return false;
@@ -1020,6 +1026,7 @@
 
   // Las texturas con filtros SVG (trama de semitono) se dibujan una sola vez como imagen:
   // así el navegador no recalcula el filtro en cada repintado mientras se escribe.
+  const baked = {};
   function bakeTextures() {
     const css = getComputedStyle(root);
     for (const name of ['--tx-trama-cafe', '--tx-trama-gris']) {
@@ -1031,6 +1038,7 @@
           const c = document.createElement('canvas');
           c.width = img.naturalWidth || 900; c.height = img.naturalHeight || 900;
           c.getContext('2d').drawImage(img, 0, 0);
+          baked[name] = img;
           c.toBlob((blob) => { if (blob) root.style.setProperty(name, `url("${URL.createObjectURL(blob)}")`); }, 'image/png');
         } catch { /* se queda la versión SVG */ }
       };
@@ -1038,6 +1046,33 @@
     }
   }
   bakeTextures();
+
+  // Aspecto del tema para el PDF: el documento tal como se ve (palabras recortadas incluidas),
+  // los colores y las texturas del papel.
+  function pdfLook() {
+    if (!S.pdfLook || !ed) return null;
+    const cs = getComputedStyle(body);
+    const v = (n) => cs.getPropertyValue(n).trim();
+    // documento con las decoraciones de cada palabra, sin los controles del editor
+    const clone = ed.view.dom.cloneNode(true);
+    clone.querySelectorAll('.ProseMirror-trailingBreak, .ProseMirror-separator, [data-resize-handle], .ProseMirror-gapcursor').forEach((n) => n.remove());
+    clone.querySelectorAll('[data-resize-container]').forEach((box) => { const img = box.querySelector('img'); if (img) box.replaceWith(img); });
+    clone.querySelectorAll('[contenteditable], [draggable]').forEach((n) => { n.removeAttribute('contenteditable'); n.removeAttribute('draggable'); });
+    clone.querySelectorAll('.ProseMirror-selectednode, .selectedCell').forEach((n) => n.classList.remove('ProseMirror-selectednode', 'selectedCell'));
+    // trama con la intensidad elegida
+    let trama = null;
+    const src = baked[v('--trama').includes('gris') || S.theme === 'collage-bn' ? '--tx-trama-gris' : '--tx-trama-cafe'];
+    if (WORD_MODE[S.theme] === 'collage' && src && S.trama > 0) {
+      const c = document.createElement('canvas');
+      c.width = src.naturalWidth || 900; c.height = src.naturalHeight || 900;
+      const g = c.getContext('2d'); g.globalAlpha = S.trama / 100; g.drawImage(src, 0, 0);
+      trama = c.toDataURL('image/png');
+    }
+    return {
+      theme: S.theme, html: clone.innerHTML, bg: v('--bg'), ink: v('--ink'),
+      pattern: v('--pattern') || 'none', trama, glow: v('--ink-glow') || 'none',
+    };
+  }
 
   // ---------------- Inicio ----------------
   leds[0].classList.add('on');
